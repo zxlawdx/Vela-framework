@@ -12,10 +12,22 @@ ENTRY_ROUTE = "/home"
 
 # ─── Janela ───────────────────────────────────────────────────────────────────
 
-WINDOW_WIDTH = 1280
+WINDOW_WIDTH  = 1280
 WINDOW_HEIGHT = 800
+
+# ─── Layout global ────────────────────────────────────────────────────────────
+# Controla quais componentes do shell são exibidos por padrão.
+# Pode ser sobrescrito no VelaApp() ou por rota (layout="blank").
+
+LAYOUT = {
+    "sidebar": True,
+    "topbar":  True,
+}
 
 # ─── Desenvolvimento ──────────────────────────────────────────────────────────
 
-# True = abre o DevTools do navegador embutido (útil para inspecionar HTML/CSS)
+# True = abre o DevTools do navegador embutido
 DEBUG = True
+
+# Diretório de arquivos estáticos coletados (usado por {{ static() }})
+STATIC_ROOT = "staticfiles"
