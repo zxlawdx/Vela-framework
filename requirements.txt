@@ -1,1 +1,6 @@
-pywebview>=4.4.1
+bottle==0.13.4
+proxy_tools==0.1.0
+pycairo==1.29.0
+PyGObject==3.56.3
+pywebview==6.2.1
+typing_extensions==4.15.0
