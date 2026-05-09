@@ -705,25 +705,250 @@ pip install git+https://github.com/zxlawdx/Vela-framework.git
 
 ### ModuleNotFoundError: No module named 'gi'
 
-No Linux, instale:
+No Linux, o pywebview depende do GTK/WebKit2.
+
+Instale as dependências do sistema:
 
 ```bash
-sudo apt install -y python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1
+sudo apt update
+
+sudo apt install -y \
+  python3-gi \
+  python3-gi-cairo \
+  gir1.2-gtk-3.0 \
+  gir1.2-webkit2-4.1 \
+  libgirepository-2.0-dev \
+  libcairo2-dev \
+  pkg-config \
+  python3-dev
 ```
 
-Se o erro continuar dentro do venv:
+---
+
+### pywebview não encontra GTK mesmo após instalar pelo apt
+
+Erro:
+
+```txt
+ModuleNotFoundError: No module named 'gi'
+```
+
+ou:
+
+```txt
+webview.errors.WebViewException:
+You must have either QT or GTK with Python extensions installed
+```
+
+Isso pode acontecer porque o ambiente virtual (`venv`) não consegue enxergar os pacotes GTK instalados globalmente pelo sistema.
+
+Mesmo após instalar:
+
+```bash
+sudo apt install -y \
+  python3-gi \
+  python3-gi-cairo \
+  gir1.2-gtk-3.0 \
+  gir1.2-webkit2-4.1
+```
+
+o Python dentro do `venv` pode continuar sem acesso ao módulo `gi`.
+
+---
+
+### Solução recomendada para Linux
+
+Recrie o ambiente virtual usando:
+
+```bash
+python3 -m venv venv --system-site-packages
+```
+
+Exemplo completo:
 
 ```bash
 deactivate
 rm -rf venv
 
 python3 -m venv venv --system-site-packages
+
 source venv/bin/activate
 
-pip install -r requirements.txt
+pip install -e ~/Estudos/Personal/Frameworks/vela_framework
+```
+
+Depois teste:
+
+```bash
+python -c "import gi; print('GTK OK')"
+```
+
+Se aparecer:
+
+```txt
+GTK OK
+```
+
+o pywebview conseguirá usar GTK corretamente.
+
+Depois rode:
+
+```bash
+python manage.py runapp
 ```
 
 ---
+
+### Importante sobre Linux + pywebview
+
+No Linux, o `pywebview` normalmente depende de:
+
+* GTK
+* WebKit2
+* python3-gi
+
+Esses pacotes devem ser instalados via `apt`, não via `pip`.
+
+O `pip` normalmente NÃO consegue instalar corretamente o backend GTK do sistema.
+
+---
+
+### Não misture requirements.txt com pyproject.toml
+
+O Vela está migrando para:
+
+```txt
+pyproject.toml
+```
+
+Então alguns projetos podem não possuir mais:
+
+```txt
+requirements.txt
+```
+
+Nesses casos, não rode:
+
+```bash
+pip install -r requirements.txt
+```
+
+Use:
+
+```bash
+pip install -e .
+```
+
+ou:
+
+```bash
+pip install git+https://github.com/zxlawdx/Vela-framework.git
+```
+
+---
+
+### Após recriar o venv, reinstale o framework
+
+Ao recriar o ambiente virtual, o pacote `vela` deixa de existir naquele ambiente.
+
+Então é necessário reinstalar:
+
+```bash
+pip install -e ~/Estudos/Personal/Frameworks/vela_framework
+```
+
+Senão ocorrerá:
+
+```txt
+ModuleNotFoundError: No module named 'vela'
+```
+
+---
+
+### WebView2 não encontrado no Windows
+
+O Windows normalmente já possui WebView2 através do Microsoft Edge Chromium.
+
+Se o app não abrir corretamente, instale manualmente:
+
+```txt
+https://developer.microsoft.com/microsoft-edge/webview2/
+```
+
+---
+
+### QT não encontrado
+
+Erro:
+
+```txt
+ModuleNotFoundError: No module named 'qtpy'
+```
+
+O Vela usa GTK por padrão no Linux.
+
+Mas, se quiser usar Qt como backend alternativo:
+
+```bash
+pip install pywebview[qt]
+```
+
+ou:
+
+```bash
+pip install qtpy PyQt6
+```
+
+---
+
+### Erro ao usar pip install -e .
+
+Erro:
+
+```txt
+error: externally-managed-environment
+```
+
+Isso acontece em distribuições Linux modernas (Ubuntu/Debian) por causa da PEP 668.
+
+Não instale o framework diretamente no Python global do sistema.
+
+Use ambiente virtual:
+
+```bash
+python3 -m venv .venv
+
+source .venv/bin/activate
+
+pip install -e .
+```
+
+---
+
+### Erro no build-backend do pyproject.toml
+
+Erro:
+
+```txt
+ModuleNotFoundError: No module named 'setuptools.backends'
+```
+
+Isso acontece quando o `build-backend` do `pyproject.toml` está incorreto.
+
+Errado:
+
+```toml
+build-backend = "setuptools.backends.legacy:build"
+```
+
+Correto:
+
+```toml
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+```
+
 
 ## Status atual
 
@@ -740,7 +965,5 @@ O Vela já possui:
 - empacotamento inicial via `pyproject.toml`;
 - instalação global via `pipx`;
 HEAD
-- suporte a uso local com `pip install -e`.
+- suporte a uso local com `pip install -e {pasta onde você clonou o repositório}`.
 
-- suporte a uso local com `pip install -e`.
-29d4aa8 (feat: adiciona suporte ao pyproject.toml e CLI global do Vela)
