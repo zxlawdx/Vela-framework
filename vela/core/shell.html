@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vela App</title>
+
+  <!-- Tailwind via CDN (em produção, compile localmente com npx tailwindcss) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    * { -webkit-user-select: none; user-select: none; }
+    input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+    html, body { overflow: hidden; height: 100%; width: 100%; }
+
+    /* Transição de página */
+    #vela-page { transition: opacity 0.15s ease; }
+    #vela-page.loading { opacity: 0; }
+
+    /* Efeito de foco */
+    [data-vela-route]:focus { outline: none; }
+  </style>
+</head>
+
+<body class="dark bg-zinc-950 text-zinc-100 font-sans antialiased">
+
+  <!-- Shell principal do Vela -->
+  <div id="vela-root" class="h-screen w-screen flex overflow-hidden">
+
+    <!-- Sidebar gerada pelo JS -->
+    <div id="vela-sidebar"></div>
+
+    <!-- Área principal -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- Topbar -->
+      <div id="vela-topbar"></div>
+
+      <!-- Conteúdo da página atual (renderizado pelo Python) -->
+      <main id="vela-page" class="flex-1 overflow-auto p-6"></main>
+    </div>
+
+  </div>
+
+  <!-- Toast / notificações -->
+  <div id="vela-toast" class="fixed bottom-5 right-5 flex flex-col gap-2 z-50"></div>
+
+  <!-- Loading overlay -->
+  <div id="vela-loading" class="hidden fixed inset-0 bg-zinc-950/80 flex items-center justify-center z-40">
+    <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+
+  <script>
+    // ─── Vela Client Runtime ───────────────────────────────────────────────
+    //
+    // Este script é o coração do frontend do framework.
+    // Ele se comunica com o Python via window.pywebview.api
+    //
+
+    const Vela = {
+      currentPath: null,
+      sidebarRoutes: [],
+
+      // ─── Inicialização ─────────────────────────────────────────────────
+
+      async init() {
+          console.log("[Vela] init chamado")
+
+          await this.loadRoutes()
+          console.log("[Vela] rotas carregadas:", this.sidebarRoutes)
+
+          this.renderSidebar()
+          this.renderTopbar()
+
+          const params = new URLSearchParams(window.location.search)
+          const entry = params.get("entry") || "/"
+          await this.navigate(entry)
+      },
+
+      // ─── Navegação ─────────────────────────────────────────────────────
+
+      async navigate(path, params = {}) {
+        if (this.currentPath === path) return;
+
+        this.showLoading();
+
+        try {
+          const result = await window.pywebview.api.navigate(path, JSON.stringify(params));
+
+          if (result.ok) {
+            const page = document.getElementById("vela-page");
+            page.classList.add("loading");
+
+            await new Promise(r => setTimeout(r, 100));
+            page.innerHTML = result.html;
+            page.classList.remove("loading");
+
+            this.currentPath = path;
+            this.updateSidebarActive(path);
+
+            // Dispara evento de navegação para as páginas escutarem
+            document.dispatchEvent(new CustomEvent("vela:navigate", { detail: { path } }));
+
+            // Inicializa scripts inline da página (se existirem)
+            page.querySelectorAll("script").forEach(oldScript => {
+              const script = document.createElement("script");
+              script.textContent = oldScript.textContent;
+              oldScript.replaceWith(script);
+            });
+          }
+        } catch (err) {
+          this.toast(`Erro ao navegar: ${err}`, "error");
+        } finally {
+          this.hideLoading();
+        }
+      },
+
+      // ─── Rotas e Sidebar ───────────────────────────────────────────────
+
+      async loadRoutes() {
+          try {
+              console.log("[Vela] chamando get_routes()...")
+              this.sidebarRoutes = await window.pywebview.api.get_routes()
+              console.log("[Vela] get_routes retornou:", this.sidebarRoutes)
+          } catch(err) {
+              console.error("[Vela] erro no get_routes:", err)
+              this.sidebarRoutes = []
+          }
+      },
+
+      renderSidebar() {
+        const sidebar = document.getElementById("vela-sidebar");
+        const items = this.sidebarRoutes
+          .filter(r => r.title) // só mostra rotas com title definido
+          .map(r => `
+            <button
+              data-vela-route="${r.path}"
+              onclick="Vela.navigate('${r.path}')"
+              class="vela-nav-item w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium
+                     text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all duration-150"
+            >
+              ${r.title}
+            </button>
+          `).join("");
+
+        sidebar.innerHTML = `
+          <aside class="w-60 h-screen bg-zinc-900 border-r border-zinc-800/60 flex flex-col p-4 gap-1">
+            <div class="mb-6 px-1">
+              <span class="text-lg font-bold tracking-tight text-white">Vela</span>
+              <span class="block text-xs text-zinc-500 mt-0.5">Framework</span>
+            </div>
+            <nav class="flex flex-col gap-1">
+              ${items || '<p class="text-xs text-zinc-600 px-2">Sem rotas registradas.</p>'}
+            </nav>
+          </aside>
+        `;
+      },
+
+      renderTopbar() {
+        const topbar = document.getElementById("vela-topbar");
+        topbar.innerHTML = `
+          <header class="h-12 bg-zinc-900/50 border-b border-zinc-800/60 flex items-center px-5 gap-3">
+            <span id="vela-topbar-title" class="text-sm font-semibold text-zinc-200"></span>
+            <div class="ml-auto flex items-center gap-2">
+              <span class="text-xs text-zinc-600 font-mono">vela v0.1</span>
+            </div>
+          </header>
+        `;
+      },
+
+      updateSidebarActive(path) {
+        document.querySelectorAll("[data-vela-route]").forEach(btn => {
+          const isActive = btn.dataset.velaRoute === path;
+          btn.classList.toggle("bg-zinc-800", isActive);
+          btn.classList.toggle("text-white", isActive);
+          btn.classList.toggle("text-zinc-400", !isActive);
+
+          if (isActive) {
+            const title = this.sidebarRoutes.find(r => r.path === path)?.title || "";
+            const topbarTitle = document.getElementById("vela-topbar-title");
+            if (topbarTitle) topbarTitle.textContent = title;
+          }
+        });
+      },
+
+      // ─── Toast ─────────────────────────────────────────────────────────
+
+      toast(message, type = "info") {
+        const colors = {
+          info: "bg-zinc-800 text-zinc-200",
+          success: "bg-green-900 text-green-200",
+          error: "bg-red-900 text-red-200",
+          warning: "bg-yellow-900 text-yellow-200",
+        };
+
+        const container = document.getElementById("vela-toast");
+        const el = document.createElement("div");
+        el.className = `px-4 py-3 rounded-xl text-sm shadow-lg border border-white/5 ${colors[type] || colors.info}`;
+        el.textContent = message;
+        container.appendChild(el);
+
+        setTimeout(() => el.remove(), 3500);
+      },
+
+      // ─── Loading ───────────────────────────────────────────────────────
+
+      showLoading() {
+        document.getElementById("vela-loading").classList.remove("hidden");
+        document.getElementById("vela-loading").classList.add("flex");
+      },
+
+      hideLoading() {
+        document.getElementById("vela-loading").classList.add("hidden");
+        document.getElementById("vela-loading").classList.remove("flex");
+      },
+    };
+
+    // Inicializa quando o pywebview estiver pronto
+    window.addEventListener("pywebviewready", () => Vela.init());
+  </script>
+
+</body>
+</html>

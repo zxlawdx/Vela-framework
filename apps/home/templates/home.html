@@ -1,0 +1,62 @@
+<div class="max-w-4xl">
+
+      <!-- Header da página -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold tracking-tight">Bem-vindo ao Vela</h1>
+        <p class="text-zinc-400 mt-1">Framework desktop com HTML, CSS, Tailwind e JS — sem navegador.</p>
+      </div>
+
+      <!-- Cards de info -->
+      <div class="grid grid-cols-3 gap-4 mb-8">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+          <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Framework</p>
+          <h2 class="text-2xl font-bold">Vela</h2>
+          <p class="text-zinc-500 text-sm mt-1">v0.1.0</p>
+        </div>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+          <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Backend</p>
+          <h2 class="text-2xl font-bold">Python</h2>
+          <p class="text-zinc-500 text-sm mt-1">pywebview bridge</p>
+        </div>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+          <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Frontend</p>
+          <h2 class="text-2xl font-bold">HTML/TW</h2>
+          <p class="text-zinc-500 text-sm mt-1">Tailwind + JS</p>
+        </div>
+      </div>
+
+      <!-- Teste da bridge -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 mb-4">
+        <h3 class="text-base font-semibold mb-3">Testar bridge Python ↔ JS</h3>
+        <div class="flex gap-3">
+          <button
+            onclick="testBridge()"
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition"
+          >
+            Chamar Python
+          </button>
+          <button
+            onclick="getInfo()"
+            class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium rounded-lg transition"
+          >
+            Info do Framework
+          </button>
+        </div>
+        <pre id="bridge-result"
+          class="mt-4 bg-zinc-950 rounded-xl p-4 text-sm text-zinc-300 font-mono min-h-12 whitespace-pre-wrap">
+Resultado aparece aqui...</pre>
+      </div>
+
+    </div>
+
+    <script>
+      async function testBridge() {
+        const result = await window.pywebview.api.ping();
+        document.getElementById("bridge-result").textContent = "Python respondeu: " + result;
+      }
+
+      async function getInfo() {
+        const info = await window.pywebview.api.get_framework_info();
+        document.getElementById("bridge-result").textContent = JSON.stringify(info, null, 2);
+      }
+    </script>
