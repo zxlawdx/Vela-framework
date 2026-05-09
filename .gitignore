@@ -11,4 +11,5 @@ __pycache__/
 *.swp
 .DS_Store
 .idea/
-.vscode/    
+.vscode/    vela_framework.egg-info/
+*.egg-info/
