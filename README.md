@@ -4,42 +4,138 @@
 
 ---
 
-## Estrutura do Projeto
+## O que é o Vela?
 
+O **Vela Framework** é um framework Python para criação de aplicações desktop com interface baseada em tecnologias web.
+
+A ideia principal é permitir que o desenvolvedor use:
+
+- Python para lógica, serviços, rotas e integração com o sistema;
+- HTML para estrutura da interface;
+- CSS/Tailwind para design;
+- JavaScript para interações;
+- pywebview para abrir tudo em uma janela desktop real.
+
+O objetivo é criar aplicações com aparência moderna, responsiva e flexível, sem que o usuário final precise lidar com navegador.
+
+---
+
+## Como o Vela funciona
+
+O Vela possui duas partes principais:
+
+```txt
+1. CLI global do framework
+2. Projeto criado pelo framework
 ```
+
+A CLI global é o comando:
+
+```bash
+vela
+```
+
+Ela serve para criar novos projetos:
+
+```bash
+vela startproject meu_app
+```
+
+Depois que o projeto é criado, ele possui seu próprio `manage.py`, responsável por rodar e administrar a aplicação:
+
+```bash
+python manage.py runapp
+```
+
+Esse modelo é parecido com o Django:
+
+```bash
+django-admin startproject meu_site
+python manage.py runserver
+```
+
+No Vela:
+
+```bash
+vela startproject meu_app
+python manage.py runapp
+```
+
+---
+
+## Estrutura atual do framework
+
+Estrutura recomendada do repositório principal do Vela:
+
+```txt
 vela_framework/
 │
-├── manage.py                    # Ponto de entrada CLI
+├── pyproject.toml               # Configuração do pacote Python
+├── README.md
 │
-├── vela/                        # Core do framework (não mexa aqui no início)
+├── vela/                        # Core do framework
+│   ├── __init__.py
+│   │
 │   ├── core/
 │   │   ├── app.py               # VelaApp — classe principal
-│   │   ├── window.py            # Janela desktop (pywebview)
+│   │   ├── window.py            # Janela desktop usando pywebview
 │   │   ├── bridge.py            # Bridge Python ↔ JS
 │   │   ├── router.py            # Sistema de rotas
-│   │   └── shell.html           # Shell HTML base (carregado pelo pywebview)
+│   │   └── shell.html           # Shell HTML base carregado pelo pywebview
+│   │
 │   ├── cli/
-│   │   ├── commands.py          # Comandos do manage.py
+│   │   ├── main.py              # CLI global: comando vela
+│   │   ├── commands.py          # Comandos usados pelo manage.py
 │   │   └── shell.py             # Shell interativo
+│   │
 │   ├── log/
 │   │   └── logger.py            # Sistema de logging
-│   └── template_engine/
-│       └── engine.py            # Engine de templates HTML
+│   │
+│   ├── template_engine/
+│   │   └── engine.py            # Engine de templates HTML
+│   │
+│   └── templates/
+│       └── project/             # Template usado pelo vela startproject
+│           ├── manage.py
+│           ├── config/
+│           ├── apps/
+│           └── requirements.txt
+│
+├── logs/                        # Gerado automaticamente, não deve ir para o pacote
+└── .gitignore
+```
+
+---
+
+## Estrutura de um projeto criado
+
+Quando você executa:
+
+```bash
+vela startproject meu_app
+```
+
+O Vela gera uma estrutura parecida com:
+
+```txt
+meu_app/
+│
+├── manage.py                    # CLI local do projeto
 │
 ├── config/
 │   ├── settings.py              # Configurações do projeto
 │   └── wsgi.py                  # Boot do app + INSTALLED_APPS
 │
-├── apps/                        # Seus apps ficam aqui
-│   └── home/                    # App exemplo
+├── apps/
+│   └── home/
 │       ├── views/
 │       │   ├── __init__.py      # register_routes()
-│       │   └── home.py          # View → retorna HTML
+│       │   └── home.py          # View que retorna HTML
 │       ├── templates/
-│       │   └── index.html       # Template opcional
+│       │   └── index.html
 │       └── static/
 │
-├── logs/                        # Gerado automaticamente
+├── logs/                        # Logs gerados automaticamente
 └── requirements.txt
 ```
 
@@ -49,55 +145,250 @@ vela_framework/
 
 - Python 3.10 ou superior
 - pip
+- pipx, recomendado para instalar a CLI global
+- pywebview
+- Dependências gráficas do sistema no Linux
 
 ---
 
-## Instalação
+## Instalando a CLI global do Vela
 
-### Windows
+Durante o desenvolvimento local do framework, a melhor forma de instalar o comando `vela` globalmente no seu usuário é usando `pipx`.
 
-O Windows já tem suporte nativo ao WebView2 (Edge Chromium). Só instalar as dependências Python:
+### Instalar pipx no Ubuntu/Debian
+
+```bash
+sudo apt install pipx -y
+pipx ensurepath
+```
+
+Depois, feche e abra o terminal.
+
+Ou rode:
+
+```bash
+source ~/.bashrc
+```
+
+Teste:
+
+```bash
+pipx --version
+```
+
+---
+
+### Instalar o Vela globalmente em modo desenvolvimento
+
+Dentro do seu computador, apontando para a pasta onde está o framework:
+
+```bash
+pipx install -e ~/Estudos/Personal/Frameworks/vela_framework
+```
+
+Se ele já estiver instalado e você quiser reinstalar:
+
+```bash
+pipx install -e ~/Estudos/Personal/Frameworks/vela_framework --force
+```
+
+Depois teste:
+
+```bash
+vela --help
+```
+
+Saída esperada:
+
+```txt
+usage: vela [-h] {startproject} ...
+
+CLI global do Vela Framework
+```
+
+---
+
+## Criando um novo projeto
+
+Em qualquer pasta:
+
+```bash
+vela startproject dockermanager
+```
+
+Depois:
+
+```bash
+cd dockermanager
+```
+
+---
+
+## Instalando o framework dentro do projeto criado
+
+O comando `vela` global serve para criar projetos.
+
+Mas o projeto criado usa `manage.py`, e o `manage.py` importa o pacote `vela`.
+
+Por isso, dentro do projeto criado, crie um ambiente virtual e instale o Vela também:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+
+pip install -e ~/Estudos/Personal/Frameworks/vela_framework
+```
+
+Depois rode:
+
+```bash
+python manage.py runapp
+```
+
+Resumo:
+
+```txt
+pipx instala o comando global: vela
+venv do projeto instala a biblioteca: vela
+```
+
+---
+
+## Fluxo completo de desenvolvimento local
+
+```bash
+# 1. Instalar CLI global
+pipx install -e ~/Estudos/Personal/Frameworks/vela_framework
+
+# 2. Criar projeto
+vela startproject dockermanager
+
+# 3. Entrar no projeto
+cd dockermanager
+
+# 4. Criar ambiente virtual
+python3 -m venv venv
+source venv/bin/activate
+
+# 5. Instalar o framework no projeto
+pip install -e ~/Estudos/Personal/Frameworks/vela_framework
+
+# 6. Rodar aplicação
+python manage.py runapp
+```
+
+---
+
+## Instalação futura via GitHub
+
+Quando o repositório estiver no GitHub, outro desenvolvedor poderá instalar a CLI global assim:
+
+```bash
+pipx install git+https://github.com/zxlawdx/Vela-framework.git
+```
+
+E criar um projeto:
+
+```bash
+vela startproject meu_app
+```
+
+Dentro do projeto criado:
+
+```bash
+cd meu_app
+python3 -m venv venv
+source venv/bin/activate
+pip install git+https://github.com/zxlawdx/Vela-framework.git
+python manage.py runapp
+```
+
+Também é possível colocar no `requirements.txt` do projeto:
+
+```txt
+git+https://github.com/zxlawdx/Vela-framework.git
+```
+
+Assim o dev só roda:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## Dependências Python
+
+No `pyproject.toml` do framework:
+
+```toml
+[project]
+name = "vela-framework"
+version = "0.1.0"
+description = "Framework Python para aplicações desktop com HTML, CSS, Tailwind e JS"
+requires-python = ">=3.10"
+dependencies = [
+    "pywebview==6.2.1",
+    "bottle==0.13.4",
+    "proxy_tools==0.1.0",
+    "typing_extensions==4.15.0"
+]
+
+[project.scripts]
+vela = "vela.cli.main:main"
+
+[tool.setuptools.packages.find]
+include = ["vela*"]
+exclude = ["logs*"]
+
+[tool.setuptools.package-data]
+vela = ["templates/project/**/*"]
+```
+
+---
+
+## Dependências no Windows
+
+O Windows geralmente já possui suporte ao WebView2 através do Edge Chromium.
+
+Instalação comum:
 
 ```bash
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
+python manage.py runapp
 ```
 
-Se a janela não abrir e der erro de WebView2, baixe o runtime em:
+Se a janela não abrir por erro de WebView2, instale o runtime:
+
+```txt
 https://developer.microsoft.com/microsoft-edge/webview2/
-
----
-
-### Linux (Ubuntu / Debian)
-
-O Linux precisa de dependências do sistema **antes** de instalar o Python package:
-
-```bash
-# 1. Dependências do sistema (GTK + WebKit)
-sudo apt install python3-gi python3-gi-cairo \
-  gir1.2-gtk-3.0 gir1.2-webkit2-4.1 \
-  libgirepository-2.0-dev -y
-
-# Se der erro no passo acima, instale também:
-sudo apt install libcairo2-dev pkg-config python3-dev -y
-
-# 2. Cria o ambiente virtual
-python3 -m venv venv
-source venv/bin/activate
-
-# 3. Instala as dependências Python
-pip install -r requirements.txt
 ```
 
-> **Importante:** o `python3-gi` precisa ser instalado pelo `apt`, não pelo `pip`.
-> É a ponte entre Python e o GTK do sistema — sem ele o pywebview não consegue abrir a janela.
-
 ---
 
-### macOS
+## Dependências no Linux Ubuntu/Debian
 
-O macOS usa WebKit nativo, sem dependências extras do sistema:
+No Linux, o pywebview precisa de um backend gráfico.
+
+Instale:
+
+```bash
+sudo apt update
+
+sudo apt install -y \
+  python3-gi \
+  python3-gi-cairo \
+  gir1.2-gtk-3.0 \
+  gir1.2-webkit2-4.1 \
+  libgirepository-2.0-dev \
+  libcairo2-dev \
+  pkg-config \
+  python3-dev
+```
+
+Depois crie o ambiente virtual:
 
 ```bash
 python3 -m venv venv
@@ -105,23 +396,72 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
----
+Se aparecer erro como:
 
-### Rodando o app
+```txt
+ModuleNotFoundError: No module named 'gi'
+```
+
+Você pode recriar o ambiente virtual permitindo acesso aos pacotes do sistema:
 
 ```bash
-# Linux / macOS
-source venv/bin/activate
-python manage.py runapp
+deactivate
+rm -rf venv
 
-# Windows
-venv\Scripts\activate
+python3 -m venv venv --system-site-packages
+source venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+Ou, se estiver desenvolvendo localmente:
+
+```bash
+pip install -e ~/Estudos/Personal/Frameworks/vela_framework
+```
+
+Depois:
+
+```bash
+python manage.py runapp
+```
+
+> Importante: no Linux, `python3-gi` normalmente deve ser instalado pelo `apt`, não pelo `pip`.
+
+---
+
+## Dependências no macOS
+
+O macOS usa WebKit nativo.
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 python manage.py runapp
 ```
 
 ---
 
-## Comandos
+## Comandos globais
+
+Comando disponível depois de instalar via `pipx`:
+
+```bash
+vela startproject <nome>
+```
+
+Exemplo:
+
+```bash
+vela startproject dockermanager
+```
+
+---
+
+## Comandos locais do projeto
+
+Dentro de um projeto criado, use:
 
 ```bash
 python manage.py runapp              # Inicia o app desktop
@@ -134,29 +474,64 @@ python manage.py version             # Versão do framework
 
 ---
 
+## Diferença entre vela e manage.py
+
+```txt
+vela
+```
+
+É a CLI global do framework.
+
+Use para criar novos projetos:
+
+```bash
+vela startproject meu_app
+```
+
+---
+
+```txt
+manage.py
+```
+
+É a CLI local de cada projeto criado.
+
+Use para administrar e rodar aquele projeto:
+
+```bash
+python manage.py runapp
+python manage.py startapp dashboard
+python manage.py routes
+```
+
+---
+
 ## Como criar um novo app
+
+Dentro do projeto:
 
 ```bash
 python manage.py startapp dashboard
 ```
 
 Isso cria:
-```
+
+```txt
 apps/dashboard/
 ├── __init__.py
 ├── views/
-│   ├── __init__.py      # register_routes()
-│   └── dashboard.py     # sua view
+│   ├── __init__.py
+│   └── dashboard.py
 ├── templates/
 └── static/
 ```
 
-Depois, registre em `config/wsgi.py`:
+Depois registre em `config/wsgi.py`:
 
 ```python
 INSTALLED_APPS = [
     "apps.home",
-    "apps.dashboard",   # ← adicione aqui
+    "apps.dashboard",
 ]
 ```
 
@@ -164,21 +539,21 @@ INSTALLED_APPS = [
 
 ## Como criar uma view
 
-Uma view é uma função Python que retorna HTML:
+Uma view no Vela é uma função Python que retorna HTML:
 
 ```python
 # apps/dashboard/views/dashboard.py
 
 def dashboard_view(params: dict) -> str:
-    return """
+    return '''
     <div>
         <h1 class="text-3xl font-bold">Dashboard</h1>
         <p class="text-zinc-400">Olá do Python!</p>
     </div>
-    """
+    '''
 ```
 
-E em `views/__init__.py`:
+Registre a rota em `views/__init__.py`:
 
 ```python
 from apps.dashboard.views.dashboard import dashboard_view
@@ -205,7 +580,7 @@ No HTML da sua view, você pode chamar funções Python diretamente:
 </script>
 ```
 
-Para expor novas funções Python ao JS, edite `vela/core/bridge.py` ou crie sua própria Bridge:
+Para expor novas funções Python ao JS, edite ou estenda a bridge:
 
 ```python
 class MinhaBridge(BaseBridge):
@@ -230,6 +605,7 @@ def minha_view(params: dict) -> str:
 ```
 
 No template:
+
 ```html
 <h1>{{ titulo }}</h1>
 <p>Olá, {{ nome }}!</p>
@@ -237,10 +613,130 @@ No template:
 
 ---
 
+## Correção importante no carregamento do shell.html
+
+Arquivos internos do framework não devem ser carregados com `Path.cwd()`.
+
+Errado:
+
+```python
+shell_path = Path.cwd() / "vela" / "core" / "shell.html"
+```
+
+Certo:
+
+```python
+from pathlib import Path
+
+shell_path = Path(__file__).resolve().parent / "shell.html"
+```
+
+Motivo:
+
+```txt
+Path.cwd()
+```
+
+aponta para a pasta onde o comando foi executado.
+
+Já:
+
+```txt
+Path(__file__).resolve().parent
+```
+
+aponta para a pasta real do arquivo atual, mesmo que o framework esteja instalado em outro lugar.
+
+---
+
 ## Compatibilidade
 
-| Sistema      | Backend gráfico       | Instalação extra            |
-|--------------|-----------------------|-----------------------------|
-| Windows 10+  | WebView2 (Edge)       | Nenhuma (já vem no sistema) |
-| Linux Ubuntu | GTK + WebKit2         | `sudo apt install ...` acima |
-| macOS 10.13+ | WKWebView             | Nenhuma                     |
+| Sistema      | Backend gráfico       | Instalação extra                         |
+|--------------|-----------------------|------------------------------------------|
+| Windows 10+  | WebView2              | Normalmente nenhuma                      |
+| Linux Ubuntu | GTK + WebKit2         | `python3-gi`, GTK, WebKit2 e libs dev    |
+| macOS 10.13+ | WKWebView             | Normalmente nenhuma                      |
+
+---
+
+## Problemas comuns
+
+### Comando vela não encontrado
+
+Rode:
+
+```bash
+pipx ensurepath
+source ~/.bashrc
+```
+
+Teste:
+
+```bash
+vela --help
+```
+
+Se ainda não funcionar:
+
+```bash
+~/.local/bin/vela --help
+```
+
+---
+
+### ModuleNotFoundError: No module named 'vela'
+
+Isso acontece quando o `manage.py` está usando um ambiente virtual onde o pacote `vela` não foi instalado.
+
+Resolva dentro do projeto:
+
+```bash
+source venv/bin/activate
+pip install -e ~/Estudos/Personal/Frameworks/vela_framework
+```
+
+Ou via GitHub:
+
+```bash
+pip install git+https://github.com/zxlawdx/Vela-framework.git
+```
+
+---
+
+### ModuleNotFoundError: No module named 'gi'
+
+No Linux, instale:
+
+```bash
+sudo apt install -y python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1
+```
+
+Se o erro continuar dentro do venv:
+
+```bash
+deactivate
+rm -rf venv
+
+python3 -m venv venv --system-site-packages
+source venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+---
+
+## Status atual
+
+O Vela já possui:
+
+- CLI global com `vela startproject`;
+- CLI local via `manage.py`;
+- sistema de apps;
+- sistema de rotas;
+- views Python retornando HTML;
+- comunicação Python ↔ JS;
+- shell HTML base;
+- suporte a janela desktop com pywebview;
+- empacotamento inicial via `pyproject.toml`;
+- instalação global via `pipx`;
+- suporte a uso local com `pip install -e`.
