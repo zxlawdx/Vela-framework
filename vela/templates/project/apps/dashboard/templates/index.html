@@ -1,5 +1,95 @@
-<!-- Template do app dashboard -->
-<div>
-        <h1 class="text-3xl font-bold mb-2">Dashboard</h1>
-        <p class="text-zinc-400">Página criada pelo Vela Framework.</p>
-</div>
+<!--
+  apps/dashboard/templates/index.html
+
+  Demonstra:
+    - Variáveis simples: {{ titulo }}
+    - Navegação nomeada: {{ url('home') }} com data-vela-link
+    - Assets estáticos: {{ static('dashboard/dashboard.css') }}
+    - Lifecycle VelaPage com mounted() e beforeUnmount()
+-->
+
+<link rel="stylesheet" href="{{ static('dashboard/dashboard.css') }}">
+
+<section class="space-y-6 max-w-4xl">
+
+  <!-- Cabeçalho -->
+  <div>
+    <h1 class="text-3xl font-bold tracking-tight">{{ titulo }}</h1>
+    <p class="text-zinc-400 mt-1">{{ descricao }}</p>
+  </div>
+
+  <!-- Cards de métricas -->
+  <div class="grid grid-cols-3 gap-4">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Usuários</p>
+      <h2 class="text-2xl font-bold" id="metric-users">—</h2>
+      <p class="text-zinc-500 text-sm mt-1">Carregando...</p>
+    </div>
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Receita</p>
+      <h2 class="text-2xl font-bold" id="metric-revenue">—</h2>
+      <p class="text-zinc-500 text-sm mt-1">Este mês</p>
+    </div>
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Status</p>
+      <h2 class="text-2xl font-bold text-green-400">Online</h2>
+      <p class="text-zinc-500 text-sm mt-1">Todos os serviços</p>
+    </div>
+  </div>
+
+  <!-- Navegação interna — usando rotas nomeadas via template engine -->
+  <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 space-y-3">
+    <h3 class="text-base font-semibold">Navegação interna (data-vela-link)</h3>
+    <p class="text-sm text-zinc-400">
+      Links gerados pelo template engine via
+      <code class="text-blue-400">{{ url('nome') }}</code>.
+      O JS intercepta automaticamente e chama <code class="text-blue-400">Vela.navigate()</code>.
+    </p>
+    <div class="flex gap-3 flex-wrap">
+      <!--
+        {{ url('home') }} → resolve para "/home" via Router.url_for("home")
+        data-vela-link   → interceptado pelo runtime JS para SPA navigation
+      -->
+      <a
+        href="{{ url('home') }}"
+        data-vela-link
+        class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm
+               font-medium rounded-lg transition-colors"
+      >
+        🏠 Ir para Home
+      </a>
+
+      <!-- Botão também funciona com data-vela-link -->
+      <button
+        data-vela-link
+        data-vela-route="{{ url('home') }}"
+        class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm
+               font-medium rounded-lg transition-colors"
+      >
+        🔀 Via data-vela-route
+      </button>
+    </div>
+  </div>
+
+</section>
+
+<script>
+// ── Lifecycle da página ──────────────────────────────────────────────────────
+window.VelaPage = {
+  _timer: null,
+
+  mounted() {
+    console.log("[Dashboard] montado")
+    // Simula carga de dados assíncrona
+    this._timer = setTimeout(() => {
+      document.getElementById("metric-users").textContent = "1.234"
+    }, 600)
+  },
+
+  beforeUnmount() {
+    console.log("[Dashboard] desmontando")
+    // Limpa timers para evitar memory leaks
+    if (this._timer) clearTimeout(this._timer)
+  }
+}
+</script>

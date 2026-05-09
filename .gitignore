@@ -1,4 +1,4 @@
-venv
+.venv
 __pycache__/
 *.pyc
 *.pyo
@@ -6,10 +6,24 @@ __pycache__/
 *.db
 *.sqlite3
 *.log
+.DS_Store
+.idea/
+.vscode/
+*.env
+*.egg-info/
+dist/
+build/
+*.egg
+*.tar.gz
+*.whl
 *.bak
 *.tmp
 *.swp
-.DS_Store
-.idea/
-.vscode/    vela_framework.egg-info/
-*.egg-info/
+*.swo
+*.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+.coverage
