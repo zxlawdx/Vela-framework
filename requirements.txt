@@ -4,3 +4,4 @@ pycairo==1.29.0
 PyGObject==3.56.3
 pywebview==6.2.1
 typing_extensions==4.15.0
+-e git+https://github.com/zxlawdx/Vela-framework.git@ac9894abe25182d27e671cfbbe65ac78baa978fa#egg=vela_framework

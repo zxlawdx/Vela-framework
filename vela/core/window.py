@@ -7,6 +7,7 @@ Usa pywebview para criar e exibir a janela nativa com HTML/CSS/JS.
 import os
 import webview
 from vela.log.logger import VelaLogger
+from pathlib import Path
 
 
 SHELL_HTML = os.path.join(os.path.dirname(__file__), "shell.html")
@@ -38,7 +39,8 @@ class DesktopWindow:
         """
         # Procura o shell.html relativo ao projeto root
         project_root = os.getcwd()
-        shell_path = os.path.join(project_root, "vela", "core", "shell.html")
+        BASE_DIR = Path(__file__).resolve().parent
+        shell_path = BASE_DIR / "shell.html"
         return shell_path
 
     def run(self):

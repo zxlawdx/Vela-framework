@@ -739,4 +739,8 @@ O Vela já possui:
 - suporte a janela desktop com pywebview;
 - empacotamento inicial via `pyproject.toml`;
 - instalação global via `pipx`;
+HEAD
 - suporte a uso local com `pip install -e`.
+
+- suporte a uso local com `pip install -e`.
+29d4aa8 (feat: adiciona suporte ao pyproject.toml e CLI global do Vela)
