@@ -1,95 +1,181 @@
-<!--
-  apps/dashboard/templates/index.html
 
-  Demonstra:
-    - Variáveis simples: {{ titulo }}
-    - Navegação nomeada: {{ url('home') }} com data-vela-link
-    - Assets estáticos: {{ static('dashboard/dashboard.css') }}
-    - Lifecycle VelaPage com mounted() e beforeUnmount()
--->
+<!-- Template do app dashboard -->
+<div class="min-h-full text-white p-8">
 
-<link rel="stylesheet" href="{{ static('dashboard/dashboard.css') }}">
+    <!-- Hero -->
+    <section class="relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/70 backdrop-blur-xl p-10">
 
-<section class="space-y-6 max-w-4xl">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-cyan-400/10"></div>
 
-  <!-- Cabeçalho -->
-  <div>
-    <h1 class="text-3xl font-bold tracking-tight">{{ titulo }}</h1>
-    <p class="text-zinc-400 mt-1">{{ descricao }}</p>
-  </div>
+        <div class="relative z-10">
 
-  <!-- Cards de métricas -->
-  <div class="grid grid-cols-3 gap-4">
-    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-      <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Usuários</p>
-      <h2 class="text-2xl font-bold" id="metric-users">—</h2>
-      <p class="text-zinc-500 text-sm mt-1">Carregando...</p>
-    </div>
-    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-      <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Receita</p>
-      <h2 class="text-2xl font-bold" id="metric-revenue">—</h2>
-      <p class="text-zinc-500 text-sm mt-1">Este mês</p>
-    </div>
-    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-      <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Status</p>
-      <h2 class="text-2xl font-bold text-green-400">Online</h2>
-      <p class="text-zinc-500 text-sm mt-1">Todos os serviços</p>
-    </div>
-  </div>
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 mb-6">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                Vela Framework • Python Desktop Runtime
+            </div>
 
-  <!-- Navegação interna — usando rotas nomeadas via template engine -->
-  <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 space-y-3">
-    <h3 class="text-base font-semibold">Navegação interna (data-vela-link)</h3>
-    <p class="text-sm text-zinc-400">
-      Links gerados pelo template engine via
-      <code class="text-blue-400">{{ url('nome') }}</code>.
-      O JS intercepta automaticamente e chama <code class="text-blue-400">Vela.navigate()</code>.
-    </p>
-    <div class="flex gap-3 flex-wrap">
-      <!--
-        {{ url('home') }} → resolve para "/home" via Router.url_for("home")
-        data-vela-link   → interceptado pelo runtime JS para SPA navigation
-      -->
-      <a
-        href="{{ url('home') }}"
-        data-vela-link
-        class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm
-               font-medium rounded-lg transition-colors"
-      >
-        🏠 Ir para Home
-      </a>
+            <h1 class="text-5xl font-black tracking-tight leading-tight">
+                Construa aplicações desktop modernas
+                <span class="text-blue-400">usando HTML, CSS e Python.</span>
+            </h1>
 
-      <!-- Botão também funciona com data-vela-link -->
-      <button
-        data-vela-link
-        data-vela-route="{{ url('home') }}"
-        class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm
-               font-medium rounded-lg transition-colors"
-      >
-        🔀 Via data-vela-route
-      </button>
-    </div>
-  </div>
+            <p class="mt-6 text-lg text-zinc-400 max-w-3xl leading-relaxed">
+                O Vela Framework foi criado para permitir que desenvolvedores Python
+                construam aplicações desktop com uma arquitetura moderna, utilizando
+                tecnologias web como HTML, TailwindCSS e JavaScript, mas sem depender
+                de um navegador tradicional.
+            </p>
 
-</section>
+            <div class="flex flex-wrap gap-4 mt-8">
 
-<script>
-// ── Lifecycle da página ──────────────────────────────────────────────────────
-window.VelaPage = {
-  _timer: null,
+                <button
+                    class="px-6 py-3 rounded-2xl bg-blue-500 hover:bg-blue-400 transition-all font-semibold shadow-lg shadow-blue-500/20"
+                >
+                    Começar projeto
+                </button>
 
-  mounted() {
-    console.log("[Dashboard] montado")
-    // Simula carga de dados assíncrona
-    this._timer = setTimeout(() => {
-      document.getElementById("metric-users").textContent = "1.234"
-    }, 600)
-  },
+                <button
+                    class="px-6 py-3 rounded-2xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 transition-all"
+                >
+                    Ver documentação
+                </button>
 
-  beforeUnmount() {
-    console.log("[Dashboard] desmontando")
-    // Limpa timers para evitar memory leaks
-    if (this._timer) clearTimeout(this._timer)
-  }
-}
-</script>
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- Cards -->
+    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-10">
+
+        <div class="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+            <div class="text-4xl mb-4">⚡</div>
+
+            <h2 class="text-xl font-bold">
+                Runtime Desktop
+            </h2>
+
+            <p class="text-zinc-400 mt-3 leading-relaxed">
+                Aplicações desktop reais usando pywebview,
+                sem Electron e sem abrir navegador.
+            </p>
+        </div>
+
+        <div class="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+            <div class="text-4xl mb-4">🎨</div>
+
+            <h2 class="text-xl font-bold">
+                Interface Moderna
+            </h2>
+
+            <p class="text-zinc-400 mt-3 leading-relaxed">
+                Crie interfaces usando HTML, TailwindCSS
+                e JavaScript moderno.
+            </p>
+        </div>
+
+        <div class="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+            <div class="text-4xl mb-4">🧠</div>
+
+            <h2 class="text-xl font-bold">
+                Python First
+            </h2>
+
+            <p class="text-zinc-400 mt-3 leading-relaxed">
+                Rotas, lógica, serviços, automações e integrações
+                ficam centralizados no Python.
+            </p>
+        </div>
+
+        <div class="rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+            <div class="text-4xl mb-4">🧩</div>
+
+            <h2 class="text-xl font-bold">
+                Arquitetura Modular
+            </h2>
+
+            <p class="text-zinc-400 mt-3 leading-relaxed">
+                Sistema de apps, rotas, templates e layouts
+                inspirado em frameworks modernos.
+            </p>
+        </div>
+
+    </section>
+
+    <!-- Arquitetura -->
+    <section class="mt-10 rounded-3xl border border-zinc-800 bg-zinc-900 p-8">
+
+        <h2 class="text-3xl font-black mb-8">
+            Como o Vela funciona
+        </h2>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <div class="rounded-2xl bg-zinc-800/60 border border-zinc-700 p-6">
+                <div class="text-sm text-blue-400 font-semibold mb-3">
+                    01
+                </div>
+
+                <h3 class="text-xl font-bold">
+                    Backend Python
+                </h3>
+
+                <p class="text-zinc-400 mt-3 leading-relaxed">
+                    O Python controla rotas, lógica de negócio,
+                    integração com sistema operacional e comunicação com JS.
+                </p>
+            </div>
+
+            <div class="rounded-2xl bg-zinc-800/60 border border-zinc-700 p-6">
+                <div class="text-sm text-blue-400 font-semibold mb-3">
+                    02
+                </div>
+
+                <h3 class="text-xl font-bold">
+                    Shell Runtime
+                </h3>
+
+                <p class="text-zinc-400 mt-3 leading-relaxed">
+                    O shell do framework controla sidebar,
+                    topbar, layouts, loading e navegação SPA.
+                </p>
+            </div>
+
+            <div class="rounded-2xl bg-zinc-800/60 border border-zinc-700 p-6">
+                <div class="text-sm text-blue-400 font-semibold mb-3">
+                    03
+                </div>
+
+                <h3 class="text-xl font-bold">
+                    Frontend Livre
+                </h3>
+
+                <p class="text-zinc-400 mt-3 leading-relaxed">
+                    Cada rota renderiza apenas o conteúdo da página,
+                    permitindo total liberdade ao desenvolvedor.
+                </p>
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- Footer -->
+    <section class="mt-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-zinc-500 text-sm">
+
+        <div>
+            Vela Framework • Experimental Desktop Runtime
+        </div>
+
+        <div class="flex items-center gap-4">
+            <span>Python</span>
+            <span>•</span>
+            <span>pywebview</span>
+            <span>•</span>
+            <span>TailwindCSS</span>
+        </div>
+
+    </section>
+
+</div>
