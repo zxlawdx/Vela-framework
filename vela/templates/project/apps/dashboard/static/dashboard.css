@@ -1,0 +1,25 @@
+/* apps/dashboard/static/dashboard.css
+   Estilos específicos do app dashboard.
+
+   Após `python manage.py collectstatic`, este arquivo será copiado para:
+   staticfiles/dashboard/dashboard.css
+
+   No template, use:
+   <link rel="stylesheet" href="{{ static('dashboard/dashboard.css') }}">
+*/
+
+/* Exemplo: animação de entrada nos cards de métricas */
+.bg-zinc-900 {
+  animation: card-fade-in 0.3s ease both;
+}
+
+@keyframes card-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

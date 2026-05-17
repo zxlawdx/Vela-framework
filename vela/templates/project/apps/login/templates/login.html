@@ -1,0 +1,98 @@
+<!--
+  apps/login/templates/login.html
+  Página de login — renderizada com layout="blank".
+  Sidebar e topbar são automaticamente ocultadas pelo shell.
+-->
+<div class="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
+  <div class="w-full max-w-sm">
+
+    <!-- Logo / Marca -->
+    <div class="flex items-center gap-2 justify-center mb-8">
+      <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+        <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
+          <path d="M2 10L6 2L10 10" stroke="white" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="text-xl font-bold text-white">Vela</span>
+    </div>
+
+    <!-- Card do formulário -->
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 space-y-5">
+      <div>
+        <h1 class="text-xl font-bold text-white">Entrar</h1>
+        <p class="text-sm text-zinc-500 mt-1">Acesse o painel do app.</p>
+      </div>
+
+      <!-- Mensagem de erro (se houver) -->
+      {{ error }}
+
+      <!-- E-mail -->
+      <div class="space-y-1.5">
+        <label class="text-sm font-medium text-zinc-300">E-mail</label>
+        <input
+          type="email"
+          id="login-email"
+          placeholder="dev@exemplo.com"
+          class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5
+                 text-sm text-white placeholder-zinc-600
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <!-- Senha -->
+      <div class="space-y-1.5">
+        <label class="text-sm font-medium text-zinc-300">Senha</label>
+        <input
+          type="password"
+          id="login-password"
+          placeholder="••••••••"
+          class="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5
+                 text-sm text-white placeholder-zinc-600
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <!-- Botão de login -->
+      <button
+        onclick="handleLogin()"
+        class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold
+               py-2.5 rounded-xl transition-colors duration-150"
+      >
+        Entrar
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Lifecycle da página de login
+window.VelaPage = {
+  mounted() {
+    // Foca no campo de e-mail ao carregar
+    document.getElementById("login-email")?.focus()
+  },
+  beforeUnmount() {
+    console.log("[Login] saindo da tela de login")
+  }
+}
+
+async function handleLogin() {
+  const email    = document.getElementById("login-email").value
+  const password = document.getElementById("login-password").value
+
+  if (!email || !password) {
+    Vela.toast("Preencha todos os campos.", "warning")
+    return
+  }
+
+  // Aqui você chamaria sua lógica de autenticação via bridge
+  // const result = await window.pywebview.api.login({ email, password })
+  // if (result.ok) Vela.navigate("/dashboard")
+
+  // Por ora: simula sucesso e navega para o dashboard
+  Vela.toast("Login realizado!", "success")
+  setTimeout(() => Vela.navigate("/dashboard"), 800)
+}
+</script>

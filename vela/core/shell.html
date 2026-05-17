@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vela App</title>
+
+  <!-- Tailwind via CDN — em produção compile com npx tailwindcss -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* Desabilita seleção de texto fora de inputs */
+    * { -webkit-user-select: none; user-select: none; }
+    input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
+
+    /* Scrollbar customizada */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+    html, body { overflow: hidden; height: 100%; width: 100%; }
+
+    /* ── Transição de página ── */
+    #vela-page {
+      transition: opacity 0.12s ease;
+    }
+    #vela-page.vela-transition-out {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    #vela-page {
+      transition: opacity 0.12s ease, transform 0.12s ease;
+    }
+
+    /* ── Layout blank: esconde sidebar e topbar ── */
+    .vela-layout-blank #vela-sidebar,
+    .vela-layout-blank #vela-topbar {
+      display: none !important;
+    }
+    .vela-layout-blank #vela-main {
+      width: 100vw;
+    }
+
+    /* ── Animação do loading spinner ── */
+    @keyframes vela-spin {
+      to { transform: rotate(360deg); }
+    }
+    .vela-spinner {
+      animation: vela-spin 0.7s linear infinite;
+    }
+
+    /* ── Toast: entrada suave ── */
+    @keyframes vela-toast-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .vela-toast-item {
+      animation: vela-toast-in 0.2s ease forwards;
+    }
+
+    /* ── Sidebar nav item ── */
+    .vela-nav-item {
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+    .vela-nav-item.active {
+      background: #27272a;
+      color: #ffffff;
+    }
+  </style>
+</head>
+
+<body class="dark bg-zinc-950 text-zinc-100 font-sans antialiased">
+
+  <!--
+    ╔══════════════════════════════════════════════════╗
+    ║           VELA SHELL — Runtime Layout            ║
+    ║                                                  ║
+    ║  Estrutura principal controlada pelo framework.  ║
+    ║  O dev final NUNCA edita este arquivo.           ║
+    ║  Configuração via VelaApp(layout={...}).         ║
+    ╚══════════════════════════════════════════════════╝
+  -->
+
+  <div id="vela-root" class="h-screen w-screen flex overflow-hidden">
+
+    <!-- Sidebar dinâmica (gerada por JS com base em get_routes()) -->
+    <div id="vela-sidebar"></div>
+
+    <!-- Área principal (sidebar + topbar + conteúdo) -->
+    <div id="vela-main" class="flex-1 flex flex-col overflow-hidden min-w-0">
+
+      <!-- Topbar do framework -->
+      <div id="vela-topbar"></div>
+
+      <!-- Conteúdo renderizado pela rota atual -->
+      <main id="vela-page" class="flex-1 overflow-auto p-6"></main>
+
+    </div>
+
+  </div>
+
+  <!-- Toast / notificações -->
+  <div id="vela-toast" class="fixed bottom-5 right-5 flex flex-col gap-2 z-50 pointer-events-none"></div>
+
+  <!-- Loading overlay global -->
+  <div
+    id="vela-loading"
+    class="hidden fixed inset-0 bg-zinc-950/70 items-center justify-center z-50"
+  >
+    <div class="vela-spinner w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────────── -->
+  <!--  VELA CLIENT RUNTIME                                                    -->
+  <!--  Coração do frontend. Comunicação com Python via window.pywebview.api  -->
+  <!-- ─────────────────────────────────────────────────────────────────────── -->
+  <script>
+    const Vela = {
+
+      // Estado interno do runtime
+      currentPath: null,
+      sidebarRoutes: [],
+      config: {},
+
+      // ─────────────────────────────────────────────────────────────────────
+      // INIT
+      // Chamado automaticamente quando pywebview estiver pronto.
+      // ─────────────────────────────────────────────────────────────────────
+
+      async init() {
+        try {
+          // 1. Carrega a config global do backend (sidebar, topbar, title...)
+          this.config = await window.pywebview.api.get_config()
+
+          // 2. Carrega as rotas da sidebar
+          await this.loadRoutes()
+
+          // 3. Monta o layout base (sidebar + topbar) com base na config
+          this.setupLayout()
+
+          // 4. Navega para a rota inicial (passada via ?entry=/rota na URL)
+          const entry = window.__VELA_ENTRY__ || "/"
+          await this.navigate(entry)
+
+        } catch (err) {
+          console.error("[Vela] Erro no init:", err)
+          this.toast("Falha ao inicializar o app.", "error")
+        }
+      },
+
+      // ─────────────────────────────────────────────────────────────────────
+      // LAYOUT SETUP
+      // Renderiza sidebar e topbar com base na config global.
+      // ─────────────────────────────────────────────────────────────────────
+
+      setupLayout() {
+        const layout = this.config.layout || {}
+
+        if (layout.sidebar !== false) {
+          this.renderSidebar()
+        } else {
+          // Remove a sidebar completamente do DOM
+          document.getElementById("vela-sidebar").remove()
+        }
+
+        if (layout.topbar !== false) {
+          this.renderTopbar()
+        } else {
+          document.getElementById("vela-topbar").remove()
+        }
+      },
+
+      // ─────────────────────────────────────────────────────────────────────
+      // NAVIGATE
+      // Núcleo do roteamento SPA. Carrega a rota, aplica layout e lifecycle.
+      // ─────────────────────────────────────────────────────────────────────
+
+      async navigate(path, params = {}) {
+        // Lifecycle: notifica a página atual antes de sair
+        if (window.VelaPage?.beforeUnmount) {
+          try { window.VelaPage.beforeUnmount() } catch(e) {}
+        }
+
+        // Limpa o ciclo de vida da página anterior
+        window.VelaPage = null
+
+        this.showLoading()
+
+        try {
+          const result = await window.pywebview.api.navigate(
+            path,
+            JSON.stringify(params)
+          )
+
+          if (!result.ok) {
+            this.toast("Erro ao carregar a página.", "error")
+            return
+          }
+
+          const page = document.getElementById("vela-page")
+
+          // Transição de saída
+          page.classList.add("vela-transition-out")
+          await this._sleep(120)
+
+          // Injeta o HTML da nova página
+          page.innerHTML = result.html
+
+          // Transição de entrada
+          page.classList.remove("vela-transition-out")
+
+          // Atualiza o caminho atual
+          this.currentPath = path
+
+          // Aplica o layout da rota (default ou blank)
+          this.applyRouteLayout(result.layout)
+
+          // Atualiza o item ativo na sidebar
+          this.updateSidebarActive(path)
+
+          // Atualiza o título na topbar
+          this.updateTopbarTitle(path)
+
+          // Executa scripts inline da página
+          this.executeInlineScripts(page)
+
+          // Intercepta links internos gerados pelo template engine
+          this.bindPageLinks(page)
+
+          // Lifecycle: monta a nova página
+          if (window.VelaPage?.mounted) {
+            try { window.VelaPage.mounted() } catch(e) {
+              console.error("[Vela] Erro em VelaPage.mounted():", e)
+            }
+          }
+
+          // Evento global de navegação (pode ser escutado por qualquer script)
+          document.dispatchEvent(new CustomEvent("vela:navigate", {
+            detail: { path, layout: result.layout }
+          }))
+
+        } catch (err) {
+          console.error("[Vela] Erro ao navegar:", err)
+          this.toast(`Erro ao navegar para ${path}`, "error")
+        } finally {
+          this.hideLoading()
+        }
+      },
+
+      // ─────────────────────────────────────────────────────────────────────
+      // LAYOUT DA ROTA
+      // "blank"   → esconde sidebar e topbar (ex: login)
+      // "default" → usa a config global
+      // ─────────────────────────────────────────────────────────────────────
+
+      applyRouteLayout(layout) {
+        const root = document.getElementById("vela-root")
+
+        // Remove classes de layout anteriores
+        root.classList.remove("vela-layout-blank", "vela-layout-default")
+
+        if (layout === "blank") {
+          root.classList.add("vela-layout-blank")
+        } else {
+          root.classList.add("vela-layout-default")
+        }
+      },
+
+      // ─────────────────────────────────────────────────────────────────────
+      // ROTAS
+      // ─────────────────────────────────────────────────────────────────────
+
+      async loadRoutes() {
+        try {
+          this.sidebarRoutes = await window.pywebview.api.get_routes()
+        } catch(err) {
+          console.error("[Vela] Erro ao carregar rotas:", err)
+          this.sidebarRoutes = []
+        }
+      },
+
+      // ─────────────────────────────────────────────────────────────────────
+      // SIDEBAR
+      // Gerada dinamicamente com base em get_routes() do backend.
+      // ─────────────────────────────────────────────────────────────────────
+
+      renderSidebar() {
+        const sidebar = document.getElementById("vela-sidebar")
+        if (!sidebar) return
+
+        // Filtra e ordena rotas visíveis
+        const routes = this.sidebarRoutes
+
+        // Agrupa por `group` (para futura expansão de grupos)
+        const items = routes.map(r => `
+          <button
+            data-vela-route="${r.path}"
+            data-vela-link
+            onclick="Vela.navigate('${r.path}')"
+            class="vela-nav-item w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium
+                   flex items-center gap-2.5 text-zinc-400 hover:text-white hover:bg-zinc-800"
+          >
+            ${r.icon ? `<span class="text-base leading-none">${r.icon}</span>` : ""}
+            <span>${r.title}</span>
+          </button>
+        `).join("")
+
+        sidebar.innerHTML = `
+          <aside class="w-60 h-screen bg-zinc-900 border-r border-zinc-800/60 flex flex-col p-4 gap-1 flex-shrink-0">
+            <div class="mb-6 px-1 flex items-center gap-2">
+              <div class="w-6 h-6 bg-blue-500 rounded-md flex items-center justify-center">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 10L6 2L10 10" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div>
+                <span class="text-sm font-bold tracking-tight text-white">${this.config.title || "Vela"}</span>
+              </div>
+            </div>
+            <nav class="flex flex-col gap-0.5 flex-1">
+              ${items || '<p class="text-xs text-zinc-600 px-2">Nenhuma rota registrada.</p>'}
+            </nav>
+          </aside>
+        `
+      },
+
+      // ─────────────────────────────────────────────────────────────────────
+      // TOPBAR
+      // ─────────────────────────────────────────────────────────────────────
+
+      renderTopbar() {
+        const topbar = document.getElementById("vela-topbar")
+        if (!topbar) return
+
+        topbar.innerHTML = `
+          <header class="h-12 bg-zinc-900/50 border-b border-zinc-800/60 flex items-center px-5 gap-3 flex-shrink-0">
+            <span id="vela-topbar-title" class="text-sm font-semibold text-zinc-200"></span>
+            <div class="ml-auto flex items-center gap-3">
+              <span class="text-xs text-zinc-600 font-mono">vela</span>
+            </div>
+          </header>
+        `
+      },
+
+      updateSidebarActive(path) {
+        document.querySelectorAll("[data-vela-route]").forEach(el => {
+          const isActive = el.dataset.velaRoute === path
+          el.classList.toggle("active", isActive)
+          el.classList.toggle("text-zinc-400", !isActive)
+        })
+      },
+
+      updateTopbarTitle(path) {
+        const el = document.getElementById("vela-topbar-title")
+        if (!el) return
+        const route = this.sidebarRoutes.find(r => r.path === path)
+        el.textContent = route?.title || ""
+      },
+
+      // ─────────────────────────────────────────────────────────────────────
+      // SCRIPTS INLINE
+      // Executa <script> tags injetadas via innerHTML (necessário pois
+      // o browser não executa scripts em innerHTML automaticamente).
+      // ─────────────────────────────────────────────────────────────────────
+
+      executeInlineScripts(container) {
+        container.querySelectorAll("script").forEach(oldScript => {
+          const newScript  = document.createElement("script")
+          newScript.textContent = oldScript.textContent
+          // Preserva atributos (src, type, etc.)
+          Array.from(oldScript.attributes).forEach(attr => {
+            newScript.setAttribute(attr.name, attr.value)
+          })
+          oldScript.replaceWith(newScript)
+        })
+      },
+
+      // ─────────────────────────────────────────────────────────────────────
+      // LINKS INTERNOS
+      // Intercepta cliques em [data-vela-link] e chama Vela.navigate().
+      // Isso permite usar:
+      //   <a href="/dashboard" data-vela-link>Dashboard</a>
+      // sem recarregar a página.
+      //
+      // O template engine já gera os hrefs corretos via {{ url('name') }}.
+      // ─────────────────────────────────────────────────────────────────────
+
+      bindPageLinks(container) {
+        // Delegação de eventos no container da página
+        container.addEventListener("click", (event) => {
+          const link = event.target.closest("[data-vela-link]")
+          if (!link) return
+
+          event.preventDefault()
+
+          // Suporte a <a href="..."> e <button data-vela-route="...">
+          const path = link.getAttribute("href") || link.dataset.velaRoute
+          if (path) Vela.navigate(path)
+        })
+      },
+
+      // ─────────────────────────────────────────────────────────────────────
+      // TOAST
+      // ─────────────────────────────────────────────────────────────────────
+
+      toast(message, type = "info", duration = 3500) {
+        const styles = {
+          info:    "bg-zinc-800 text-zinc-200 border-zinc-700",
+          success: "bg-green-950 text-green-200 border-green-800",
+          error:   "bg-red-950  text-red-200  border-red-800",
+          warning: "bg-yellow-950 text-yellow-200 border-yellow-800",
+        }
+
+        const container = document.getElementById("vela-toast")
+        const el = document.createElement("div")
+        el.className = `vela-toast-item pointer-events-auto px-4 py-3 rounded-xl text-sm shadow-xl
+                        border ${styles[type] || styles.info}`
+        el.textContent = message
+        container.appendChild(el)
+
+        setTimeout(() => {
+          el.style.transition = "opacity 0.3s ease"
+          el.style.opacity    = "0"
+          setTimeout(() => el.remove(), 300)
+        }, duration)
+      },
+
+      // ─────────────────────────────────────────────────────────────────────
+      // LOADING
+      // ─────────────────────────────────────────────────────────────────────
+
+      showLoading() {
+        const el = document.getElementById("vela-loading")
+        el.classList.remove("hidden")
+        el.classList.add("flex")
+      },
+
+      hideLoading() {
+        const el = document.getElementById("vela-loading")
+        el.classList.add("hidden")
+        el.classList.remove("flex")
+      },
+
+      // ─────────────────────────────────────────────────────────────────────
+      // HELPERS
+      // ─────────────────────────────────────────────────────────────────────
+
+      _sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms))
+      },
+    }
+
+    // ── Interceptor global de links com data-vela-link fora da página ──
+    // (útil para links na sidebar gerados pelo renderSidebar)
+    document.addEventListener("click", (event) => {
+      const link = event.target.closest("[data-vela-link]")
+      if (!link) return
+      // Se o link está dentro de #vela-page, já foi tratado pelo bindPageLinks
+      const page = document.getElementById("vela-page")
+      if (page && page.contains(link)) return
+
+      event.preventDefault()
+      const path = link.getAttribute("href") || link.dataset.velaRoute
+      if (path) Vela.navigate(path)
+    })
+
+    // ── Inicializa quando o pywebview estiver pronto ──
+    window.addEventListener("pywebviewready", () => Vela.init())
+  </script>
+
+</body>
+</html>
