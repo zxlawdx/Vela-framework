@@ -711,3 +711,73 @@ O Vela já possui:
 * empacotamento via pyproject.toml;
 * instalação via pipx;
 * desenvolvimento local via `pip install -e`.
+
+```
+Vela-framework
+├─ README.md
+├─ pyproject.toml
+├─ requirements.txt
+└─ vela
+   ├─ __init__.py
+   ├─ api.py
+   ├─ cli
+   │  ├─ __init__.py
+   │  ├─ collectstatic.py
+   │  ├─ commands.py
+   │  ├─ main.py
+   │  └─ shell.py
+   ├─ core
+   │  ├─ __init__.py
+   │  ├─ api_loader.py
+   │  ├─ api_router.py
+   │  ├─ api_server.py
+   │  ├─ app.py
+   │  ├─ bridge.py
+   │  ├─ router.py
+   │  ├─ shell.html
+   │  └─ window.py
+   ├─ log
+   │  ├─ __init__.py
+   │  └─ logger.py
+   ├─ template_engine
+   │  ├─ __init__.py
+   │  └─ engine.py
+   ├─ templates
+   │  └─ project
+   │     ├─ apps
+   │     │  ├─ __init__.py
+   │     │  ├─ dashboard
+   │     │  │  ├─ __init__.py
+   │     │  │  ├─ static
+   │     │  │  │  └─ dashboard.css
+   │     │  │  ├─ templates
+   │     │  │  │  └─ index.html
+   │     │  │  └─ views
+   │     │  │     ├─ __init__.py
+   │     │  │     └─ dashboard.py
+   │     │  ├─ home
+   │     │  │  ├─ __init__.py
+   │     │  │  ├─ static
+   │     │  │  │  └─ __init__.py
+   │     │  │  ├─ templates
+   │     │  │  │  └─ home.html
+   │     │  │  └─ views
+   │     │  │     ├─ __init__.py
+   │     │  │     └─ home.py
+   │     │  └─ login
+   │     │     ├─ __init__.py
+   │     │     ├─ static
+   │     │     │  └─ __init__.py
+   │     │     ├─ templates
+   │     │     │  └─ login.html
+   │     │     └─ views
+   │     │        ├─ __init__.py
+   │     │        └─ login.py
+   │     ├─ config
+   │     │  ├─ __init__.py
+   │     │  ├─ settings.py
+   │     │  └─ wsgi.py
+   │     └─ manage.py
+   └─ urls.py
+
+```

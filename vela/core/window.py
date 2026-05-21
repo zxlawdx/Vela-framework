@@ -4,13 +4,9 @@ Gerenciador da janela desktop do Vela.
 Usa pywebview para criar e exibir a janela nativa com HTML/CSS/JS.
 """
 
-import os
 import webview
-from vela.log.logger import VelaLogger
-from pathlib import Path
-from vela.templates.project.config.settings import ENTRY_ROUTE 
 
-SHELL_HTML = os.path.join(os.path.dirname(__file__), "shell.html")
+from vela.log.logger import VelaLogger
 
 
 class DesktopWindow:
@@ -22,6 +18,8 @@ class DesktopWindow:
         bridge=None,
         debug: bool = False,
         entry_route: str = "/",
+        host: str = "127.0.0.1",
+        port: int = 8000,
     ):
         self.title = title
         self.width = width
@@ -29,31 +27,28 @@ class DesktopWindow:
         self.bridge = bridge
         self.debug = debug
         self.entry_route = entry_route
+        self.host = host
+        self.port = port
         self.logger = VelaLogger("Window")
 
-    def _get_shell_html(self) -> str:
+    def _get_shell_url(self) -> str:
         """
-        Retorna o HTML base que o pywebview vai carregar.
-        Este HTML é o 'shell' da aplicação — ele carrega o CSS e o JS do app,
-        mas o conteúdo de cada página vem via Python através da bridge.
+        URL do shell servido pelo servidor interno do Vela.
+        Evita problemas de CORS causados por file://
         """
-        # Procura o shell.html relativo ao projeto root
-        project_root = os.getcwd()
-        BASE_DIR = Path(__file__).resolve().parent
-        shell_path = BASE_DIR / "shell.html"
-        return shell_path
+        return (
+            f"http://{self.host}:"
+            f"{self.port}"
+            "/__vela__/shell"
+        )
 
     def run(self):
         """Cria e exibe a janela desktop."""
-        shell_path = self._get_shell_html()
+        shell_url = self._get_shell_url()
 
-        if not os.path.exists(shell_path):
-            self.logger.error(f"shell.html não encontrado em: {shell_path}")
-            raise FileNotFoundError(f"shell.html não encontrado em: {shell_path}")
-
-        shell_url = shell_path.resolve().as_uri()
-
-        self.logger.info(f"Carregando shell: {shell_url}")
+        self.logger.info(
+            f"Carregando shell: {shell_url}"
+        )
 
         window = webview.create_window(
             title=self.title,
@@ -69,13 +64,12 @@ class DesktopWindow:
         def on_loaded():
             window.evaluate_js(f"""
                 window.__VELA_ENTRY__ = "{self.entry_route}";
-
-                if (window.navigate) {{
-                    window.navigate("{self.entry_route}");
-                }}
             """)
 
         window.events.loaded += on_loaded
 
         webview.start(debug=self.debug)
-        self.logger.info("Janela encerrada.")
+
+        self.logger.info(
+            "Janela encerrada."
+        )

@@ -43,6 +43,7 @@ class Route:
         group: str = "",
         order: int = 0,
         layout: str = "default",
+        theme: str = None,
         show_in_sidebar: bool = True,
         name: str = None,
     ):
@@ -81,6 +82,7 @@ class Route:
             "group": self.group,
             "order": self.order,
             "layout": self.layout,
+            "theme": self.theme,
             "show_in_sidebar": self.show_in_sidebar,
         }
 
@@ -119,6 +121,7 @@ class Router:
         group: str = "",
         order: int = 0,
         layout: str = "default",
+        theme: str = None,
         show_in_sidebar: bool = True,
         name: str = None,
     ):
@@ -137,6 +140,7 @@ class Router:
             group=group,
             order=order,
             layout=layout,
+            theme=theme,
             show_in_sidebar=show_in_sidebar,
             name=name,
         )
@@ -154,12 +158,6 @@ class Router:
     def resolve(self, path: str, params: dict = None) -> dict:
         """
         Resolve um path e retorna um dict com html e layout.
-
-        Retorno:
-            {
-                "html": "<div>...</div>",
-                "layout": "default"   # ou "blank"
-            }
         """
         route = self._routes.get(path)
 
@@ -168,9 +166,13 @@ class Router:
             return {
                 "html": self._not_found(path),
                 "layout": "default",
+                "theme": None,
             }
 
-        self.logger.info(f"Navegando para: {path} [layout={route.layout}]")
+        self.logger.info(
+            f"Navegando para: {path} "
+            f"[layout={route.layout}]"
+        )
 
         try:
             html = route.render(params, router=self)
@@ -181,6 +183,7 @@ class Router:
         return {
             "html": html,
             "layout": route.layout,
+            "theme": route.theme,
         }
 
     # ─── URL nomeada (estilo Django) ──────────────────────────────────────

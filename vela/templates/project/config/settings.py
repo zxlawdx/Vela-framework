@@ -21,7 +21,8 @@ WINDOW_HEIGHT = 800
 
 LAYOUT = {
     "sidebar": True,
-    "topbar":  True,
+    "topbar": True,
+    "theme": "light",
 }
 
 # ─── Desenvolvimento ──────────────────────────────────────────────────────────

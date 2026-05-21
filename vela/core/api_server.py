@@ -1,7 +1,10 @@
-from bottle import Bottle, request, response, run
+from bottle import Bottle, request, response, run, static_file
 from threading import Thread
+from pathlib import Path
 import inspect
 import json
+
+CORE_DIR = Path(__file__).resolve().parent
 
 
 class ApiServer:
@@ -19,15 +22,32 @@ class ApiServer:
         self.prefix = prefix
         self.debug = debug
         self.app = Bottle()
+
+        # NOVO
+        self._register_internal_routes()
+
         if debug == True:
             self._enable_cors()
+
+    # NOVO
+    def _register_internal_routes(self):
+        @self.app.get("/__vela__/shell")
+        def serve_shell():
+            return static_file(
+                "shell.html",
+                root=str(CORE_DIR)
+            )
 
     def _enable_cors(self):
         @self.app.hook("after_request")
         def add_cors_headers():
             response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "Origin, Accept, Content-Type, X-Requested-With"
+            response.headers["Access-Control-Allow-Methods"] = (
+                "GET, POST, PUT, DELETE, OPTIONS"
+            )
+            response.headers["Access-Control-Allow-Headers"] = (
+                "Origin, Accept, Content-Type, X-Requested-With"
+            )
 
         @self.app.route("/<path:path>", method="OPTIONS")
         def options_handler(path):
@@ -39,7 +59,10 @@ class ApiServer:
             path = self.prefix + route["path"]
             handler = route["handler"]
 
-            print(f"[VELA API] Registrando rota: {method} {path}")
+            print(
+                f"[VELA API] Registrando rota: "
+                f"{method} {path}"
+            )
 
             self.app.route(
                 path,
@@ -74,31 +97,45 @@ class ApiServer:
             else:
                 result = handler()
 
-            # Se o handler já retornou uma resposta pronta do Bottle
             if hasattr(result, "status_code"):
                 return result
 
-            # JSON automático só para dict/list
             if isinstance(result, (dict, list)):
-                response.content_type = "application/json; charset=utf-8"
-                return json.dumps(result, ensure_ascii=False)
+                response.content_type = (
+                    "application/json; charset=utf-8"
+                )
+                return json.dumps(
+                    result,
+                    ensure_ascii=False
+                )
 
-            # String vira HTML/texto puro
             if isinstance(result, str):
-                response.content_type = "text/html; charset=utf-8"
+                response.content_type = (
+                    "text/html; charset=utf-8"
+                )
                 return result
 
-            # Fallback
-            response.content_type = "application/json; charset=utf-8"
-            return json.dumps(result, ensure_ascii=False)
+            response.content_type = (
+                "application/json; charset=utf-8"
+            )
+
+            return json.dumps(
+                result,
+                ensure_ascii=False
+            )
 
         return wrapper
 
+    # MANTÉM O TEU MÉTODO GIGANTE AQUI
     def _register_debug_routes(self):
         @self.app.get("/__vela__/api/routes")
         def debug_routes():
-            response.content_type = "text/html; charset=utf-8"
+            response.content_type = (
+                "text/html; charset=utf-8"
+            )
 
+            # TODO teu HTML gigante
+            ...
             routes_html = ""
 
             for idx, route in enumerate(self.api_router.routes):
@@ -397,7 +434,7 @@ class ApiServer:
     </script>
 </body>
 </html>"""
-
+    
     def start(self):
         self.register_routes()
 
