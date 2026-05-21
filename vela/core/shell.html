@@ -99,7 +99,8 @@
           await this.loadRoutes()
           this.setupLayout()
 
-          const entry = window.__VELA_ENTRY__ || "/"
+          const params = new URLSearchParams(window.location.search)
+          const entry = params.get("entry") || window.__VELA_ENTRY__ || "/"
           await this.navigate(entry)
         } catch (err) {
           console.error("[Vela] Erro no init:", err)

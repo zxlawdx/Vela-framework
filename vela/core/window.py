@@ -32,14 +32,9 @@ class DesktopWindow:
         self.logger = VelaLogger("Window")
 
     def _get_shell_url(self) -> str:
-        """
-        URL do shell servido pelo servidor interno do Vela.
-        Evita problemas de CORS causados por file://
-        """
         return (
-            f"http://{self.host}:"
-            f"{self.port}"
-            "/__vela__/shell"
+            f"http://{self.host}:{self.port}"
+            f"/__vela__/shell?entry={self.entry_route}"
         )
 
     def run(self):
