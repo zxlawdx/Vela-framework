@@ -17,12 +17,14 @@ class ApiServer:
         port=8000,
         prefix="/api",
         debug=False,
+        static_root="staticfiles",
     ):
         self.api_router = api_router
         self.host = host
         self.port = port
         self.prefix = prefix
         self.debug = debug
+        self.static_root = static_root
         self.app = Bottle()
 
         self._register_internal_routes()
@@ -37,6 +39,12 @@ class ApiServer:
                 "shell.html",
                 root=str(CORE_DIR)
             )
+
+        @self.app.get("/__vela__/static/<filepath:path>")
+        def serve_static(filepath):
+            import os
+            root = os.path.join(os.getcwd(), self.static_root)
+            return static_file(filepath, root=root)
 
     def wait_until_ready(self, timeout: float = 10.0):
         """

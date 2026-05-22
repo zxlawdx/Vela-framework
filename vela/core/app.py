@@ -42,6 +42,12 @@ class VelaApp:
 
         self.api_server = None
 
+        # Em modo http, informa o router da base URL para gerar static URLs corretas
+        if self._config.get("shell_mode", "http") == "http":
+            host = self._config["api"]["host"]
+            port = self._config["api"]["port"]
+            self.router.base_url = f"http://{host}:{port}"
+
         self.logger.info(
             f"Vela iniciado | title={self._config['title']} "
             f"| sidebar={self._config['layout']['sidebar']} "
@@ -94,6 +100,7 @@ class VelaApp:
 
             # Modo de carregamento do shell: "http" (recomendado) ou "file" (legado)
             "shell_mode": "http",
+            "static_root": "staticfiles",
         }
 
         if s:
@@ -120,6 +127,9 @@ class VelaApp:
 
             if hasattr(s, "SHELL_MODE"):
                 config["shell_mode"] = s.SHELL_MODE
+
+            if hasattr(s, "STATIC_ROOT"):
+                config["static_root"] = s.STATIC_ROOT
 
         if title:
             config["title"] = title
@@ -373,6 +383,7 @@ class VelaApp:
                 host=c["api"]["host"],
                 port=c["api"]["port"],
                 debug=c["debug"],
+                static_root=c.get("static_root", "staticfiles"),
             )
 
             self.logger.info(

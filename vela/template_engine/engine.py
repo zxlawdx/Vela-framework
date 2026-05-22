@@ -14,10 +14,11 @@ def _resolve_url(name: str, router) -> str:
         return f"/#route-{name}-not-found"
 
 
-def _resolve_static(path: str, static_root: str = "staticfiles") -> str:
+def _resolve_static(path: str, static_root: str = "staticfiles", base_url: str = None) -> str:
+    if base_url:
+        return f"{base_url}/__vela__/static/{path}"
     base = os.path.join(os.getcwd(), static_root)
     full = os.path.join(base, path)
-
     url = "file:///" + full.replace("\\", "/").lstrip("/")
     return url
 
@@ -35,7 +36,7 @@ def _evaluate_expression(expr: str, context: dict, router, static_root: str) -> 
     static_match = re.match(r"""^static\(\s*['"](.+?)['"]\s*\)$""", expr)
     if static_match:
         path = static_match.group(1)
-        return _resolve_static(path, static_root)
+        return _resolve_static(path, static_root, base_url=context.get("__base_url__"))
 
     if re.match(r"^\w+$", expr):
         value = context.get(expr, "")
@@ -107,6 +108,10 @@ def render_string(
     static_root: str = "staticfiles",
 ) -> str:
     context = context or {}
+
+    # Injeta base_url do router no context para que static() gere URLs http://
+    if router and getattr(router, "base_url", None) and "__base_url__" not in context:
+        context["__base_url__"] = router.base_url
 
     source = for_expressions(
         source,

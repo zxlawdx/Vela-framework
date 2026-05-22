@@ -53,6 +53,7 @@ class Route:
         self.group = group
         self.order = order
         self.layout = layout
+        self.theme = theme
         self.show_in_sidebar = show_in_sidebar
 
         # Nome para url_for(): padrão é o path sem "/" inicial
@@ -69,6 +70,8 @@ class Route:
 
         context = params or {}
         context["router"] = router
+        if router and router.base_url:
+            context["__base_url__"] = router.base_url
 
         return handler(context)
 
@@ -109,6 +112,8 @@ class Router:
         # Índice por nome: { "dashboard": Route } — para url_for()
         self._named: dict[str, Route] = {}
         self.logger = VelaLogger("Router")
+        # Base URL para gerar URLs de static em modo http
+        self.base_url: str = None
 
     # ─── Registro ────────────────────────────────────────────────────────
 
