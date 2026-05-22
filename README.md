@@ -1,309 +1,748 @@
 # Vela Framework
 
-> Framework Python para aplicações desktop usando HTML, CSS, Tailwind e JS — sem navegador.
+> Framework Python para aplicações desktop usando HTML, TailwindCSS e JavaScript — sem navegador.
 
 ---
 
 # O que é o Vela?
 
-O **Vela Framework** é um framework Python para criação de aplicações desktop com interface baseada em tecnologias web.
+O **Vela Framework** é um framework desktop baseado em tecnologias web.
 
-A ideia principal é permitir que o desenvolvedor use:
+O desenvolvedor utiliza:
 
-* Python para lógica, serviços, rotas e integração com o sistema;
-* HTML para estrutura da interface;
-* CSS/Tailwind para design;
-* JavaScript para interações;
-* pywebview para abrir tudo em uma janela desktop real.
+- Python para backend;
+- HTML para estrutura;
+- TailwindCSS/CSS para design;
+- JavaScript para interações;
+- pywebview para abrir tudo em uma janela desktop nativa.
 
-O objetivo é criar aplicações com aparência moderna, responsiva e flexível, sem que o usuário final precise lidar com navegador.
+O objetivo do Vela é permitir aplicações desktop modernas sem Electron e sem navegador aberto para o usuário final.
+
+---
+
+# Filosofia do Framework
+
+O Vela tenta manter uma arquitetura simples e organizada:
+
+```txt
+Frontend (HTML/JS)
+        ↓
+API do Vela
+        ↓
+Views / Services
+        ↓
+Sistema operacional / banco / rede / arquivos
+```
+
+Separação das responsabilidades:
+
+| Camada | Responsabilidade |
+|---|---|
+| urls.py | registrar endpoints |
+| views.py | lógica das rotas |
+| services.py | regra de negócio |
+| templates/ | HTML |
+| static/ | JS/CSS/imagens |
 
 ---
 
 # Como o Vela funciona
 
-O Vela possui duas partes principais:
+O framework possui duas partes:
 
 ```txt
-1. CLI global do framework
-2. Projeto criado pelo framework
+1. CLI global → vela
+2. Projeto local → manage.py
 ```
 
-A CLI global é o comando:
+---
 
-```bash
-vela
-```
+# CLI global
 
-Ela serve para criar novos projetos:
+Cria projetos:
 
 ```bash
 vela startproject meu_app
 ```
 
-Depois que o projeto é criado, ele possui seu próprio `manage.py`, responsável por rodar e administrar a aplicação:
+---
+
+# CLI local
+
+Administra o projeto:
 
 ```bash
-python manage.py runapp
-```
-
-Esse modelo é parecido com o Django:
-
-```bash
-django-admin startproject meu_site
-python manage.py runserver
-```
-
-No Vela:
-
-```bash
-vela startproject meu_app
 python manage.py runapp
 ```
 
 ---
 
-# Estrutura atual do framework
+# Fluxo completo
 
-Estrutura recomendada do repositório principal do Vela:
+```bash
+# instalar globalmente
+pipx install git+https://github.com/zxlawdx/Vela-framework.git
+
+# criar projeto
+vela startproject meu_app
+
+# entrar no projeto
+cd meu_app
+
+# criar ambiente virtual
+python3 -m venv venv --system-site-packages
+
+# ativar
+source venv/bin/activate
+
+# instalar framework
+pip install git+https://github.com/zxlawdx/Vela-framework.git
+
+# coletar arquivos estáticos
+python manage.py collectstatic
+
+# rodar aplicação
+python manage.py runapp
+```
+
+---
+
+# Estrutura do framework
 
 ```txt
-vela_framework/
-│
-├── pyproject.toml
+Vela-framework/
 ├── README.md
-│
-├── vela/
-│   ├── __init__.py
-│   │
-│   ├── core/
-│   │   ├── app.py
-│   │   ├── window.py
-│   │   ├── bridge.py
-│   │   ├── router.py
-│   │   └── shell.html
-│   │
-│   ├── cli/
-│   │   ├── main.py
-│   │   ├── commands.py
-│   │   └── shell.py
-│   │
-│   ├── log/
-│   │   └── logger.py
-│   │
-│   ├── template_engine/
-│   │   └── engine.py
-│   │
-│   └── templates/
-│       └── project/
-│           ├── manage.py
-│           ├── pyproject.toml
-│           ├── config/
-│           └── apps/
-│
-├── logs/
-└── .gitignore
+├── pyproject.toml
+├── requirements.txt
+└── vela/
+   ├── __init__.py
+   ├── api.py
+   ├── urls.py
+   │
+   ├── cli/
+   │  ├── commands.py
+   │  ├── collectstatic.py
+   │  ├── main.py
+   │  └── shell.py
+   │
+   ├── core/
+   │  ├── app.py
+   │  ├── api_loader.py
+   │  ├── api_router.py
+   │  ├── api_server.py
+   │  ├── bridge.py
+   │  ├── router.py
+   │  ├── shell.html
+   │  └── window.py
+   │
+   ├── log/
+   │  └── logger.py
+   │
+   ├── template_engine/
+   │  └── engine.py
+   │
+   └── templates/
+      └── project/
 ```
 
 ---
 
-# Estrutura de um projeto criado
-
-Quando você executa:
-
-```bash
-vela startproject meu_app
-```
-
-O Vela gera algo parecido com:
+# Estrutura de um projeto Vela
 
 ```txt
 meu_app/
-│
 ├── manage.py
 │
 ├── config/
-│   ├── settings.py
-│   └── wsgi.py
+│  ├── settings.py
+│  └── wsgi.py
 │
 ├── apps/
-│   └── home/
-│       ├── views/
-│       │   ├── __init__.py
-│       │   └── home.py
-│       │
-│       ├── templates/
-│       │   └── index.html
-│       │
-│       └── static/
+│  ├── home/
+│  ├── dashboard/
+│  └── folder_tree/
+│
+├── staticfiles/
 │
 └── logs/
 ```
 
 ---
 
-# Requisitos
-
-* Python 3.10+
-* pip
-* pipx
-* pywebview
-* Dependências gráficas no Linux
-
----
-
-# Instalando a CLI global do Vela
-
-O recomendado é usar `pipx`.
-
-## Ubuntu/Debian
-
-```bash
-sudo apt install pipx -y
-pipx ensurepath
-```
-
-Depois:
-
-```bash
-source ~/.bashrc
-```
-
-Teste:
-
-```bash
-pipx --version
-```
-
----
-
-# Instalar o Vela globalmente
-
-```bash
-pipx install -e ~/Estudos/Personal/Frameworks/vela_framework
-```
-
-Reinstalar:
-
-```bash
-pipx install -e ~/Estudos/Personal/Frameworks/vela_framework --force
-```
-
-Teste:
-
-```bash
-vela --help
-```
-
----
-
-# Criando um projeto
-
-```bash
-vela startproject dockermanager
-```
-
-Depois:
-
-```bash
-cd dockermanager
-```
-
----
-
-# Instalando o framework no projeto criado
-
-Crie o ambiente virtual:
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-Instale o framework:
-
-```bash
-pip install -e ~/Estudos/Personal/Frameworks/vela_framework
-```
-
-Depois rode:
-
-```bash
-python manage.py runapp
-```
-
-Resumo:
+# Estrutura recomendada de um app
 
 ```txt
-pipx instala o comando global: vela
-venv instala a biblioteca: vela
+folder_tree/
+├── services.py
+├── urls.py
+├── views.py
+├── __init__.py
+├── templates/
+└── static/
 ```
 
 ---
 
-# Fluxo completo de desenvolvimento local
+# Responsabilidade de cada arquivo
 
-```bash
-# Instalar CLI global
-pipx install -e ~/Estudos/Personal/Frameworks/vela_framework
+## urls.py
 
-# Criar projeto
-vela startproject dockermanager
+Responsável por registrar endpoints.
 
-# Entrar no projeto
-cd dockermanager
+Exemplo:
 
-# Criar ambiente virtual
-python3 -m venv venv
-source venv/bin/activate
+```python
+from vela.urls import path
+from apps.folder_tree.views import list_folders
 
-# Instalar o framework
-pip install -e ~/Estudos/Personal/Frameworks/vela_framework
-
-# Rodar aplicação
-python manage.py runapp
+urlpatterns = [
+    path("/folders/", list_folders),
+]
 ```
 
 ---
 
-# Instalação via GitHub
+## views.py
 
-Instalar CLI:
+Responsável pelas APIs e renderização.
 
-```bash
-pipx install git+https://github.com/zxlawdx/Vela-framework.git
+---
+
+## services.py
+
+Responsável pela lógica de negócio.
+
+Ideal para:
+
+- leitura de arquivos;
+- parsing;
+- scanners;
+- monitoramento;
+- ping;
+- banco de dados;
+- integrações externas;
+- validações.
+
+---
+
+# Sistema de URLs
+
+O Vela utiliza:
+
+```python
+from vela.urls import path
 ```
 
-Criar projeto:
+Exemplo:
 
-```bash
-vela startproject meu_app
+```python
+urlpatterns = [
+    path("/folders/", list_folders),
+]
 ```
 
-Instalar framework dentro do projeto:
+---
 
-```bash
-cd meu_app
+# Sistema de API
 
-python3 -m venv venv
-source venv/bin/activate
+O framework possui decorators:
 
-pip install git+https://github.com/zxlawdx/Vela-framework.git
+```python
+@api.get()
+@api.post()
 ```
 
-Rodar:
+Eles registram endpoints automaticamente no servidor Bottle interno do framework.
+
+---
+
+# Exemplo completo de API
+
+## apps/folder_tree/views.py
+
+```python
+from pathlib import Path
+import webview
+
+from bottle import request
+
+from vela.api import api
+from vela.template_engine.engine import render_template
+
+
+@api.post("/folders/")
+def list_folders(context):
+    """
+    Lista arquivos e pastas de um diretório.
+    """
+
+    data = request.json or {}
+
+    path = data.get("path")
+
+    if not path:
+        return {
+            "error": "path não enviado"
+        }
+
+    p = Path(path)
+
+    if not p.exists():
+        return {
+            "error": "pasta não existe"
+        }
+
+    items = []
+
+    for item in p.iterdir():
+
+        items.append({
+            "name": item.name,
+            "path": str(item),
+            "type": "folder" if item.is_dir() else "file",
+            "icon": "📁" if item.is_dir() else "📄",
+            "arrow": "›" if item.is_dir() else ""
+        })
+
+    return items
+```
+
+---
+
+# Explicação do endpoint
+
+## request.json
+
+Pega JSON enviado pelo frontend.
+
+Exemplo:
+
+```json
+{
+  "path": "/home/law"
+}
+```
+
+---
+
+## Path(path)
+
+Transforma string em objeto pathlib.
+
+---
+
+## p.iterdir()
+
+Lista arquivos e diretórios.
+
+---
+
+## return items
+
+O Vela converte automaticamente para JSON.
+
+---
+
+# Selecionando pasta nativamente
+
+O Vela consegue acessar recursos nativos do sistema via pywebview.
+
+---
+
+## Exemplo
+
+```python
+@api.get("/select-folder/")
+def select_folder(context):
+
+    folder = webview.windows[0].create_file_dialog(
+        webview.FileDialog.FOLDER
+    )
+
+    if not folder:
+        return {"path": None}
+
+    return {"path": folder[0]}
+```
+
+---
+
+# O que isso faz?
+
+Abre o seletor de pastas nativo:
+
+- Windows Explorer;
+- Nautilus;
+- Finder;
+- etc.
+
+---
+
+# Renderização server-side
+
+O Vela possui um template engine próprio.
+
+---
+
+# Exemplo
+
+```python
+@api.post("/render-folders/")
+def render_folders(context):
+
+    folders = context["json"].get("folders", [])
+
+    html = render_template(
+        "apps/home/templates/components/folders.html",
+        {
+            "folders": folders
+        }
+    )
+
+    return html
+```
+
+---
+
+# context["json"]
+
+O Vela já entrega o JSON parseado automaticamente.
+
+---
+
+# render_template()
+
+Renderiza HTML no backend.
+
+---
+
+# Exemplo de template
+
+```html
+{{ for("folders") }}
+
+<li
+    data-path="{{ item.path }}"
+    data-name="{{ item.name }}"
+    data-type="{{ item.type }}"
+>
+    {{ item.icon }}
+    {{ item.name }}
+</li>
+
+{{ endfor }}
+```
+
+---
+
+# Lendo conteúdo de arquivos
+
+```python
+@api.get("/file-content/")
+def context_file(context):
+
+    path = request.query.get("path")
+
+    if not path:
+        return {
+            "error": "Path não enviada"
+        }
+
+    try:
+
+        content = Path(path).read_text(
+            encoding="utf-8"
+        )
+
+        return {
+            "content": content
+        }
+
+    except Exception as e:
+
+        return {
+            "error": str(e)
+        }
+```
+
+---
+
+# request.query
+
+Usado para parâmetros GET.
+
+Exemplo:
+
+```txt
+/file-content/?path=/home/law/teste.py
+```
+
+---
+
+# Fluxo frontend → backend
+
+```txt
+JavaScript
+    ↓
+fetch()
+    ↓
+API do Vela
+    ↓
+@api.post("/folders/")
+    ↓
+views.py
+    ↓
+services.py (opcional)
+    ↓
+JSON / HTML
+    ↓
+Frontend
+```
+
+---
+
+# Exemplo frontend
+
+```javascript
+const response = await fetch(
+    "http://127.0.0.1:8000/api/folders/",
+    {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            path: "/home/law"
+        })
+    }
+)
+
+const data = await response.json()
+```
+
+---
+
+# Organização recomendada
+
+## Projetos pequenos
+
+Pode deixar tudo em `views.py`.
+
+---
+
+## Projetos médios/grandes
+
+Separar:
+
+```txt
+views.py
+services.py
+urls.py
+```
+
+---
+
+# Exemplo ideal
+
+## services.py
+
+```python
+from pathlib import Path
+
+
+def get_folders(path):
+
+    p = Path(path)
+
+    return list(p.iterdir())
+```
+
+---
+
+## views.py
+
+```python
+from vela.api import api
+
+from apps.folder_tree.services import get_folders
+
+
+@api.post("/folders/")
+def list_folders(context):
+
+    data = context["json"]
+
+    folders = get_folders(
+        data["path"]
+    )
+
+    return folders
+```
+
+---
+
+# Sistema de templates
+
+O template engine suporta:
+
+## Variáveis
+
+```html
+{{ titulo }}
+```
+
+---
+
+## Loops
+
+```html
+{{ for("items") }}
+
+{{ item.name }}
+
+{{ endfor }}
+```
+
+---
+
+# Estáticos
+
+Cada app possui:
+
+```txt
+static/
+```
+
+Exemplo:
+
+```txt
+apps/home/static/js/app.js
+```
+
+Depois:
 
 ```bash
-python manage.py runapp
+python manage.py collectstatic
+```
+
+---
+
+# Resultado
+
+```txt
+staticfiles/home/js/app.js
+```
+
+---
+
+# Usando nos templates
+
+```html
+<script src="{{ static('home/js/app.js') }}"></script>
+```
+
+---
+
+# Sistema interno HTTP
+
+Internamente o Vela sobe um servidor Bottle:
+
+```txt
+http://127.0.0.1:8000
+```
+
+A shell do framework é aberta em:
+
+```txt
+/__vela__/shell
+```
+
+---
+
+# Sistema de estáticos
+
+Arquivos estáticos são servidos por:
+
+```txt
+/__vela__/static/
+```
+
+Isso evita problemas com:
+
+```txt
+file://
+```
+
+---
+
+# Comunicação Python ↔ JS
+
+O pywebview expõe:
+
+```javascript
+window.pywebview.api
+```
+
+---
+
+# Exemplo
+
+```javascript
+const result = await window.pywebview.api.ping()
+```
+
+---
+
+# Configurações
+
+## config/settings.py
+
+```python
+APP_TITLE = "Meu App"
+
+ENTRY_ROUTE = "/home"
+
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 800
+
+DEBUG = True
+
+STATIC_ROOT = "staticfiles"
+```
+
+---
+
+# Registrando apps
+
+## config/wsgi.py
+
+```python
+from vela.core.app import VelaApp
+
+INSTALLED_APPS = [
+    "apps.home",
+    "apps.dashboard",
+    "apps.folder_tree",
+]
+
+
+def run():
+
+    app = VelaApp(
+        settings_module="config.settings"
+    )
+
+    for app_name in INSTALLED_APPS:
+        app.register_app(app_name)
+
+    app.run()
 ```
 
 ---
 
 # Dependências Python
 
-O Vela utiliza `pyproject.toml` como sistema principal de empacotamento.
-
-Exemplo:
+## pyproject.toml
 
 ```toml
 [project]
@@ -328,38 +767,15 @@ build-backend = "setuptools.build_meta"
 
 ---
 
-# Dependências no Windows
+# Linux
 
-O Windows normalmente já possui WebView2.
-
-Se necessário:
-
-```txt
-https://developer.microsoft.com/microsoft-edge/webview2/
-```
-
-Fluxo:
-
-```bash
-python -m venv venv
-venv\Scripts\activate
-
-pip install -e .
-
-python manage.py runapp
-```
+O pywebview depende de GTK/WebKit2.
 
 ---
 
-# Dependências no Linux Ubuntu/Debian
-
-O pywebview precisa do GTK/WebKit2.
-
-Instale:
+# Ubuntu/Debian
 
 ```bash
-sudo apt update
-
 sudo apt install -y \
   python3-gi \
   python3-gi-cairo \
@@ -371,413 +787,153 @@ sudo apt install -y \
   python3-dev
 ```
 
-Depois:
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-
-pip install -e .
-```
-
 ---
 
-# Problema comum no Linux
-
-Erro:
-
-```txt
-ModuleNotFoundError: No module named 'gi'
-```
-
-ou:
-
-```txt
-webview.errors.WebViewException:
-You must have either QT or GTK with Python extensions installed
-```
-
-Mesmo após instalar GTK via `apt`, o `venv` pode não enxergar os pacotes globais.
-
----
-
-# Solução recomendada
-
-Recrie o ambiente virtual:
-
-```bash
-deactivate
-rm -rf venv
-
-python3 -m venv venv --system-site-packages
-
-source venv/bin/activate
-```
-
-Depois:
-
-```bash
-pip install -e .
-```
-
-Teste:
-
-```bash
-python -c "import gi; print('GTK OK')"
-```
-
-Se aparecer:
-
-```txt
-GTK OK
-```
-
-rode:
-
-```bash
-python manage.py runapp
-```
-
----
-
-# Importante sobre Linux + pywebview
+# IMPORTANTE
 
 No Linux:
 
-* GTK
-* WebKit2
-* python3-gi
-
-devem ser instalados via `apt`, não via `pip`.
-
----
-
-# Dependências no macOS
-
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-
-pip install -e .
-
-python manage.py runapp
+python3 -m venv venv --system-site-packages
 ```
 
----
-
-# Comandos globais
-
-```bash
-vela startproject <nome>
-```
-
-Exemplo:
-
-```bash
-vela startproject dockermanager
-```
-
----
-
-# Comandos locais do projeto
-
-```bash
-python manage.py runapp
-python manage.py shell
-python manage.py startapp <nome>
-python manage.py logs
-python manage.py routes
-python manage.py version
-```
-
----
-
-# Diferença entre vela e manage.py
-
-```txt
-vela
-```
-
-CLI global do framework.
-
----
-
-```txt
-manage.py
-```
-
-CLI local do projeto criado.
-
----
-
-# Criando um novo app
-
-```bash
-python manage.py startapp dashboard
-```
-
-Estrutura:
-
-```txt
-apps/dashboard/
-├── __init__.py
-├── views/
-├── templates/
-└── static/
-```
-
-Registrar em:
-
-```python
-INSTALLED_APPS = [
-    "apps.home",
-    "apps.dashboard",
-]
-```
-
----
-
-# Criando uma view
-
-```python
-def dashboard_view(params: dict) -> str:
-    return '''
-    <div>
-        <h1 class="text-3xl font-bold">Dashboard</h1>
-    </div>
-    '''
-```
-
-Registrar:
-
-```python
-router.add("/dashboard", dashboard_view, title="Dashboard")
-```
-
----
-
-# Comunicação Python ↔ JS
-
-```html
-<button onclick="ping()">Ping</button>
-
-<script>
-async function ping() {
-    const resposta = await window.pywebview.api.ping();
-    console.log(resposta);
-}
-</script>
-```
-
----
-
-# Templates HTML
-
-```python
-from vela.template_engine.engine import render_template
-
-def minha_view(params):
-    return render_template(
-        "apps/home/templates/index.html",
-        {
-            "titulo": "Olá"
-        }
-    )
-```
-
-Template:
-
-```html
-<h1>{{ titulo }}</h1>
-```
-
----
-
-# Compatibilidade
-
-| Sistema | Backend       | Dependências        |
-| ------- | ------------- | ------------------- |
-| Windows | WebView2      | Normalmente nenhuma |
-| Linux   | GTK + WebKit2 | GTK/WebKit2         |
-| macOS   | WKWebView     | Normalmente nenhuma |
+Sem isso o GTK pode não funcionar dentro do venv.
 
 ---
 
 # Problemas comuns
 
+## No module named gi
+
+Instale:
+
+```bash
+sudo apt install python3-gi
+```
+
+---
+
+## pywebview não abre
+
+Instale:
+
+```bash
+gir1.2-webkit2-4.1
+```
+
+---
+
 ## vela não encontrado
 
 ```bash
 pipx ensurepath
-source ~/.bashrc
 ```
 
 ---
 
 ## No module named 'vela'
 
-Instale o framework no venv:
-
 ```bash
-pip install -e ~/Estudos/Personal/Frameworks/vela_framework
-```
-
----
-
-## No module named 'gi'
-
-Instale:
-
-```bash
-sudo apt install -y \
-  python3-gi \
-  python3-gi-cairo \
-  gir1.2-gtk-3.0 \
-  gir1.2-webkit2-4.1
-```
-
----
-
-## pywebview não encontra GTK
-
-Recrie o venv:
-
-```bash
-python3 -m venv venv --system-site-packages
-```
-
----
-
-## QT não encontrado
-
-```bash
-pip install pywebview[qt]
-```
-
-ou:
-
-```bash
-pip install qtpy PyQt6
-```
-
----
-
-## externally-managed-environment
-
-Use ambiente virtual:
-
-```bash
-python3 -m venv .venv
-
-source .venv/bin/activate
-
 pip install -e .
 ```
 
 ---
 
-## build-backend incorreto
+## file:// nos estáticos
 
-Errado:
+Isso normalmente significa que:
 
-```toml
-build-backend = "setuptools.backends.legacy:build"
-```
+- `collectstatic` não foi executado;
+- `base_url` não foi configurado;
+- existe duplicação da classe `VelaApp`.
 
-Correto:
+---
 
-```toml
-[build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+# Comandos do framework
+
+## Criar projeto
+
+```bash
+vela startproject meu_app
 ```
 
 ---
 
-# Status atual
+## Rodar app
 
-O Vela já possui:
-
-* CLI global;
-* CLI local;
-* sistema de apps;
-* sistema de rotas;
-* bridge Python ↔ JS;
-* pywebview;
-* template engine;
-* shell runtime;
-* hot reload simples;
-* suporte a layouts;
-* empacotamento via pyproject.toml;
-* instalação via pipx;
-* desenvolvimento local via `pip install -e`.
-
+```bash
+python manage.py runapp
 ```
-Vela-framework
-├─ README.md
-├─ pyproject.toml
-├─ requirements.txt
-└─ vela
-   ├─ __init__.py
-   ├─ api.py
-   ├─ cli
-   │  ├─ __init__.py
-   │  ├─ collectstatic.py
-   │  ├─ commands.py
-   │  ├─ main.py
-   │  └─ shell.py
-   ├─ core
-   │  ├─ __init__.py
-   │  ├─ api_loader.py
-   │  ├─ api_router.py
-   │  ├─ api_server.py
-   │  ├─ app.py
-   │  ├─ bridge.py
-   │  ├─ router.py
-   │  ├─ shell.html
-   │  └─ window.py
-   ├─ log
-   │  ├─ __init__.py
-   │  └─ logger.py
-   ├─ template_engine
-   │  ├─ __init__.py
-   │  └─ engine.py
-   ├─ templates
-   │  └─ project
-   │     ├─ apps
-   │     │  ├─ __init__.py
-   │     │  ├─ dashboard
-   │     │  │  ├─ __init__.py
-   │     │  │  ├─ static
-   │     │  │  │  └─ dashboard.css
-   │     │  │  ├─ templates
-   │     │  │  │  └─ index.html
-   │     │  │  └─ views
-   │     │  │     ├─ __init__.py
-   │     │  │     └─ dashboard.py
-   │     │  ├─ home
-   │     │  │  ├─ __init__.py
-   │     │  │  ├─ static
-   │     │  │  │  └─ __init__.py
-   │     │  │  ├─ templates
-   │     │  │  │  └─ home.html
-   │     │  │  └─ views
-   │     │  │     ├─ __init__.py
-   │     │  │     └─ home.py
-   │     │  └─ login
-   │     │     ├─ __init__.py
-   │     │     ├─ static
-   │     │     │  └─ __init__.py
-   │     │     ├─ templates
-   │     │     │  └─ login.html
-   │     │     └─ views
-   │     │        ├─ __init__.py
-   │     │        └─ login.py
-   │     ├─ config
-   │     │  ├─ __init__.py
-   │     │  ├─ settings.py
-   │     │  └─ wsgi.py
-   │     └─ manage.py
-   └─ urls.py
 
+---
+
+## Criar app
+
+```bash
+python manage.py startapp dashboard
 ```
+
+---
+
+## Coletar estáticos
+
+```bash
+python manage.py collectstatic
+```
+
+---
+
+## Ver rotas
+
+```bash
+python manage.py routes
+```
+
+---
+
+## Shell
+
+```bash
+python manage.py shell
+```
+
+---
+
+## Logs
+
+```bash
+python manage.py logs
+```
+
+---
+
+# Compatibilidade
+
+| Sistema | Backend |
+|---|---|
+| Linux | GTK + WebKit2 |
+| Windows | WebView2 |
+| macOS | WKWebView |
+
+---
+
+# Status atual do framework
+
+O Vela atualmente possui:
+
+- CLI global;
+- CLI local;
+- sistema de apps;
+- sistema de rotas;
+- APIs REST internas;
+- template engine;
+- renderização server-side;
+- pywebview;
+- integração Python ↔ JS;
+- sistema de estáticos;
+- layouts;
+- suporte a TailwindCSS;
+- Bottle integrado;
+- hot reload simples;
+- integração com filesystem;
+- janelas desktop nativas.
