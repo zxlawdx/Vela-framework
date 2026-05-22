@@ -1,12 +1,23 @@
 """
 vela.core.window
+================
 Gerenciador da janela desktop do Vela.
 Usa pywebview para criar e exibir a janela nativa com HTML/CSS/JS.
+
+Modos de carregamento do shell:
+  shell_mode = "http"   → http://127.0.0.1:PORT/__vela__/shell  (recomendado)
+  shell_mode = "file"   → file:///path/to/shell.html             (legado)
+
+O modo "http" elimina problemas de CORS quando páginas fazem fetch para /api/...
+pois a origin fica consistente em http://127.0.0.1:PORT.
 """
 
+from pathlib import Path
 import webview
 
 from vela.log.logger import VelaLogger
+
+CORE_DIR = Path(__file__).resolve().parent
 
 
 class DesktopWindow:
@@ -20,6 +31,7 @@ class DesktopWindow:
         entry_route: str = "/",
         host: str = "127.0.0.1",
         port: int = 8000,
+        shell_mode: str = "http",
     ):
         self.title = title
         self.width = width
@@ -29,20 +41,31 @@ class DesktopWindow:
         self.entry_route = entry_route
         self.host = host
         self.port = port
+        self.shell_mode = shell_mode
         self.logger = VelaLogger("Window")
 
     def _get_shell_url(self) -> str:
-        return (
-            f"http://{self.host}:{self.port}"
-            f"/__vela__/shell?entry={self.entry_route}"
-        )
+        if self.shell_mode == "file":
+            # Modo legado: carrega o arquivo diretamente.
+            # Atenção: fetch() para http://127.0.0.1/api/... causará CORS neste modo.
+            shell_path = CORE_DIR / "shell.html"
+            # Em modo file://, a entry_route é passada via __VELA_ENTRY__ no on_loaded,
+            # pois não há query string disponível de forma confiável.
+            return shell_path.as_uri()
+        else:
+            # Modo http: shell servido pelo Bottle interno.
+            # entry_route é passada como query string — lida pelo JS antes da bridge.
+            return (
+                f"http://{self.host}:{self.port}"
+                f"/__vela__/shell?entry={self.entry_route}"
+            )
 
     def run(self):
         """Cria e exibe a janela desktop."""
         shell_url = self._get_shell_url()
 
         self.logger.info(
-            f"Carregando shell: {shell_url}"
+            f"Carregando shell [{self.shell_mode}]: {shell_url}"
         )
 
         window = webview.create_window(
@@ -57,14 +80,15 @@ class DesktopWindow:
         )
 
         def on_loaded():
-            window.evaluate_js(f"""
-                window.__VELA_ENTRY__ = "{self.entry_route}";
-            """)
+            # Injeta __VELA_ENTRY__ em ambos os modos.
+            # Em modo http, funciona como fallback caso a query string não seja lida.
+            # Em modo file, é o mecanismo principal.
+            window.evaluate_js(
+                f'window.__VELA_ENTRY__ = "{self.entry_route}";'
+            )
 
         window.events.loaded += on_loaded
 
         webview.start(debug=self.debug)
 
-        self.logger.info(
-            "Janela encerrada."
-        )
+        self.logger.info("Janela encerrada.")

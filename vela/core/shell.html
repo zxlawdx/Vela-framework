@@ -92,8 +92,12 @@
       currentPath: null,
       sidebarRoutes: [],
       config: {},
+      _initialized: false,  // guard contra double-init (pywebviewready + polling)
 
       async init() {
+        if (this._initialized) return
+        this._initialized = true
+
         try {
           this.config = await window.pywebview.api.get_config()
           await this.loadRoutes()
@@ -341,7 +345,32 @@
       if (path) Vela.navigate(path)
     })
 
+    // ─── Bootstrap robusto para modo http e file:// ───────────────────────────
+    //
+    // Problema: em modo http, o evento "pywebviewready" pode disparar antes
+    // que window.pywebview.api esteja disponível em alguns backends (GTK/Qt).
+    // Solução: guard de dupla-init + polling de fallback.
+    //
+    function _velaBootstrap() {
+      if (window.pywebview && window.pywebview.api) {
+        Vela.init()
+      } else {
+        setTimeout(_velaBootstrap, 50)
+      }
+    }
+
+    // Caminho 1: evento nativo do pywebview (modo file:// e backends que o suportam)
     window.addEventListener("pywebviewready", () => Vela.init())
+
+    // Caminho 2: fallback via polling para quando o evento não dispara a tempo
+    // (modo http em GTK WebKit2, Qt WebEngine, etc.)
+    document.addEventListener("DOMContentLoaded", () => {
+      setTimeout(() => {
+        if (!Vela._initialized) {
+          _velaBootstrap()
+        }
+      }, 300)
+    })
   </script>
 
 </body>

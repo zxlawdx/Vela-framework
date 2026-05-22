@@ -3,6 +3,8 @@ from threading import Thread
 from pathlib import Path
 import inspect
 import json
+import socket
+import time
 
 CORE_DIR = Path(__file__).resolve().parent
 
@@ -23,13 +25,11 @@ class ApiServer:
         self.debug = debug
         self.app = Bottle()
 
-        # NOVO
         self._register_internal_routes()
 
         if debug == True:
             self._enable_cors()
 
-    # NOVO
     def _register_internal_routes(self):
         @self.app.get("/__vela__/shell")
         def serve_shell():
@@ -37,6 +37,31 @@ class ApiServer:
                 "shell.html",
                 root=str(CORE_DIR)
             )
+
+    def wait_until_ready(self, timeout: float = 10.0):
+        """
+        Bloqueia até que o servidor HTTP esteja aceitando conexões TCP.
+
+        Resolve a race condition onde pywebview tenta carregar /__vela__/shell
+        antes do Bottle ter subido completamente na thread daemon.
+
+        Args:
+            timeout: Tempo máximo de espera em segundos (default: 10s).
+
+        Raises:
+            RuntimeError: Se o servidor não responder dentro do timeout.
+        """
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                with socket.create_connection((self.host, self.port), timeout=0.5):
+                    return True
+            except OSError:
+                time.sleep(0.05)
+        raise RuntimeError(
+            f"Servidor Vela não respondeu em {self.host}:{self.port} "
+            f"após {timeout}s. Verifique se a porta não está em uso."
+        )
 
     def _enable_cors(self):
         @self.app.hook("after_request")
@@ -126,7 +151,6 @@ class ApiServer:
 
         return wrapper
 
-    # MANTÉM O TEU MÉTODO GIGANTE AQUI
     def _register_debug_routes(self):
         @self.app.get("/__vela__/api/routes")
         def debug_routes():
@@ -134,8 +158,6 @@ class ApiServer:
                 "text/html; charset=utf-8"
             )
 
-            # TODO teu HTML gigante
-            ...
             routes_html = ""
 
             for idx, route in enumerate(self.api_router.routes):
@@ -434,7 +456,7 @@ class ApiServer:
     </script>
 </body>
 </html>"""
-    
+
     def start(self):
         self.register_routes()
 

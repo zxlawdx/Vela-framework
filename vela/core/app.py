@@ -91,6 +91,9 @@ class VelaApp:
                 "host": "127.0.0.1",
                 "port": 8000,
             },
+
+            # Modo de carregamento do shell: "http" (recomendado) ou "file" (legado)
+            "shell_mode": "http",
         }
 
         if s:
@@ -114,6 +117,9 @@ class VelaApp:
 
             if hasattr(s, "API"):
                 config["api"].update(s.API)
+
+            if hasattr(s, "SHELL_MODE"):
+                config["shell_mode"] = s.SHELL_MODE
 
         if title:
             config["title"] = title
@@ -357,24 +363,34 @@ class VelaApp:
                 raise
             
     def run(self):
-        """Inicia a API local e a janela desktop."""
+        """Inicia a API local (aguarda ela estar pronta) e a janela desktop."""
 
-        if self._config["api"]["enabled"]:
+        c = self._config
+
+        if c["api"]["enabled"]:
             self.api_server = ApiServer(
                 api_router=api,
-                host=self._config["api"]["host"],
-                port=self._config["api"]["port"],
-                debug=self._config["debug"],
+                host=c["api"]["host"],
+                port=c["api"]["port"],
+                debug=c["debug"],
             )
 
             self.logger.info(
                 f"Iniciando API local em "
-                f"http://{self._config['api']['host']}:{self._config['api']['port']}"
+                f"http://{c['api']['host']}:{c['api']['port']}"
             )
 
             self.api_server.start()
 
-        c = self._config
+            # Aguarda o Bottle estar pronto antes de abrir a janela.
+            # Resolve a race condition: pywebview não deve tentar carregar
+            # /__vela__/shell antes do servidor HTTP aceitar conexões.
+            try:
+                self.api_server.wait_until_ready()
+                self.logger.info("Servidor HTTP pronto.")
+            except RuntimeError as e:
+                self.logger.error(str(e))
+                raise
 
         self.logger.info(
             f"Iniciando janela: {c['title']} "
@@ -388,6 +404,9 @@ class VelaApp:
             bridge=self.bridge,
             debug=c["debug"],
             entry_route=c["entry_route"],
+            host=c["api"]["host"],
+            port=c["api"]["port"],
+            shell_mode=c.get("shell_mode", "http"),
         )
 
         window.run()
