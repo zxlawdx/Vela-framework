@@ -228,7 +228,20 @@ LAYOUT = {
 
 DEBUG       = False     # True = abre o DevTools do WebView
 STATIC_ROOT = "staticfiles"
+
+# Porta preferencial do servidor HTTP interno.
+# Se 8000 já estiver em uso, o Vela escolhe outra porta livre automaticamente.
+API = {
+    "host": "127.0.0.1",
+    "port": 8000,
+    "auto_port": True,
+}
 ```
+
+---
+
+> [!TIP]
+> A porta em `API["port"]` é **preferencial**. Com `auto_port=True`, se outra instância ou processo já estiver usando essa porta, o Vela pede ao sistema operacional uma porta TCP livre e atualiza automaticamente o servidor, o router de assets e a URL da janela. Use `auto_port=False` se quiser falhar imediatamente quando a porta configurada estiver ocupada.
 
 ---
 

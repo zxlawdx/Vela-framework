@@ -96,6 +96,10 @@ class VelaApp:
                 "enabled": self.enable_api,
                 "host": "127.0.0.1",
                 "port": 8000,
+
+                # Se a porta configurada estiver ocupada, o Vela pede
+                # automaticamente ao SO outra porta TCP livre.
+                "auto_port": True,
             },
 
             # Modo de carregamento do shell: "http" (recomendado) ou "file" (legado)
@@ -200,13 +204,32 @@ class VelaApp:
         c = self._config
 
         if c["api"]["enabled"]:
+            requested_port = c["api"]["port"]
+
             self.api_server = ApiServer(
                 api_router=api,
                 host=c["api"]["host"],
-                port=c["api"]["port"],
+                port=requested_port,
                 debug=c["debug"],
                 static_root=c.get("static_root", "staticfiles"),
+                auto_port=c["api"].get("auto_port", True),
             )
+
+            # A porta efetiva pode ser diferente da porta configurada.
+            # Atualizamos a config compartilhada, o router e a janela para
+            # todos usarem exatamente o mesmo servidor.
+            c["api"]["port"] = self.api_server.port
+
+            if c.get("shell_mode", "http") == "http":
+                self.router.base_url = (
+                    f"http://{c['api']['host']}:{c['api']['port']}"
+                )
+
+            if self.api_server.port != requested_port:
+                self.logger.warning(
+                    f"Porta {requested_port} em uso. "
+                    f"Vela realocou a API para {self.api_server.port}."
+                )
 
             self.logger.info(
                 f"Iniciando API local em "

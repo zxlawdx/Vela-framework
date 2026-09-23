@@ -1,6 +1,6 @@
 [project]
 name = "vela-framework"
-version = "0.1.0"
+version = "0.1.1"
 description = "Framework Python para aplicações desktop com HTML, CSS, Tailwind e JS — sem navegador"
 readme = "README.md"
 requires-python = ">=3.10"
