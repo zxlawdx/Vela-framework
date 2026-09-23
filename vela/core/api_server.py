@@ -18,10 +18,22 @@ class ApiServer:
         prefix="/api",
         debug=False,
         static_root="staticfiles",
+        auto_port=True,
     ):
         self.api_router = api_router
         self.host = host
-        self.port = port
+
+        # Guarda a porta solicitada e resolve a porta efetiva antes
+        # de subir o Bottle. Se a porta estiver ocupada, o SO escolhe
+        # uma porta livre quando auto_port=True.
+        self.requested_port = int(port)
+        self.auto_port = auto_port
+        self.port = self.resolve_port(
+            host=self.host,
+            preferred_port=self.requested_port,
+            auto_port=self.auto_port,
+        )
+
         self.prefix = prefix
         self.debug = debug
         self.static_root = static_root
@@ -31,6 +43,84 @@ class ApiServer:
 
         if debug == True:
             self._enable_cors()
+
+    @staticmethod
+    def _socket_family(host: str):
+        """
+        Retorna a família de socket apropriada para o host configurado.
+        O Vela usa IPv4 por padrão, mas mantém suporte básico a IPv6.
+        """
+        return socket.AF_INET6 if ":" in host else socket.AF_INET
+
+    @classmethod
+    def is_port_available(cls, host: str, port: int) -> bool:
+        """
+        Verifica se uma porta TCP pode ser usada pelo servidor local.
+
+        O teste é feito por bind, sem iniciar listener. Isso detecta
+        corretamente quando outra instância do Vela ou outro processo
+        já está usando a porta.
+        """
+        try:
+            port = int(port)
+        except (TypeError, ValueError):
+            return False
+
+        if port <= 0 or port > 65535:
+            return False
+
+        family = cls._socket_family(host)
+
+        try:
+            with socket.socket(family, socket.SOCK_STREAM) as sock:
+                sock.bind((host, port))
+            return True
+        except OSError:
+            return False
+
+    @classmethod
+    def resolve_port(
+        cls,
+        host: str,
+        preferred_port: int,
+        auto_port: bool = True,
+    ) -> int:
+        """
+        Resolve a porta que o servidor deve usar.
+
+        Fluxo:
+          1. Tenta manter a porta configurada.
+          2. Se estiver ocupada e auto_port=False, interrompe com erro claro.
+          3. Se estiver ocupada e auto_port=True, pede ao SO uma porta livre.
+
+        Usar bind(host, 0) delega ao sistema operacional a escolha de uma
+        porta efêmera disponível, evitando uma busca manual 8001, 8002, ...
+        """
+        try:
+            preferred_port = int(preferred_port)
+        except (TypeError, ValueError):
+            raise ValueError("A porta da API deve ser um número inteiro.")
+
+        if preferred_port == 0:
+            auto_port = True
+        elif cls.is_port_available(host, preferred_port):
+            return preferred_port
+        elif not auto_port:
+            raise RuntimeError(
+                f"A porta {preferred_port} já está em uso em {host}. "
+                "Defina API['auto_port'] = True para permitir fallback automático."
+            )
+
+        family = cls._socket_family(host)
+
+        try:
+            with socket.socket(family, socket.SOCK_STREAM) as sock:
+                sock.bind((host, 0))
+                return int(sock.getsockname()[1])
+        except OSError as exc:
+            raise RuntimeError(
+                f"Não foi possível encontrar uma porta livre para o Vela em {host}."
+            ) from exc
 
     def _register_internal_routes(self):
         @self.app.get("/__vela__/shell")
@@ -60,9 +150,17 @@ class ApiServer:
             RuntimeError: Se o servidor não responder dentro do timeout.
         """
         deadline = time.time() + timeout
+
+        # 0.0.0.0/:: são endereços de bind, não destinos ideais para probe.
+        probe_host = self.host
+        if probe_host == "0.0.0.0":
+            probe_host = "127.0.0.1"
+        elif probe_host == "::":
+            probe_host = "::1"
+
         while time.time() < deadline:
             try:
-                with socket.create_connection((self.host, self.port), timeout=0.5):
+                with socket.create_connection((probe_host, self.port), timeout=0.5):
                     return True
             except OSError:
                 time.sleep(0.05)
