@@ -25,6 +25,17 @@ LAYOUT = {
     "theme": "light",
 }
 
+# ─── API local ────────────────────────────────────────────────────────────────
+# A porta configurada é preferencial. Se já estiver ocupada e auto_port=True,
+# o Vela pede ao sistema operacional outra porta TCP livre automaticamente.
+
+API = {
+    "enabled": True,
+    "host": "127.0.0.1",
+    "port": 8000,
+    "auto_port": True,
+}
+
 # ─── Desenvolvimento ──────────────────────────────────────────────────────────
 
 # True = abre o DevTools do navegador embutido
