@@ -16,7 +16,7 @@ python manage.py init-process:instalation
 ~~~
 
 Também é aceito o alias com grafia inglesa corrigida
-\`init-process:installation\` ou \`buildapp --wizard\`.
+`init-process:installation` ou `buildapp --wizard`.
 
 O assistente **Next/Next** oferece quatro telas:
 
@@ -26,10 +26,10 @@ O assistente **Next/Next** oferece quatro telas:
    instalar pacotes. O Polkit solicita autorização administrativa para apt.
 4. Compila; **só instala depois de confirmação adicional**.
 
-Compilar não usa \`sudo\`. A instalação padrão do Linux é por usuário
+Compilar não usa `sudo`. A instalação padrão do Linux é por usuário
 (sem privilégios administrativos). O Vela não vê nem armazena sua senha.
 Em Linux, o Tkinter precisa estar disponível antes de abrir o wizard;
-alternativamente rode \`python manage.py doctor --fix\` no terminal.
+alternativamente rode `python manage.py doctor --fix` no terminal.
 
 ## Fluxo completo por terminal
 
@@ -42,17 +42,17 @@ python manage.py installapp              # instala build local do usuário
 python manage.py makeworkflow            # gera Github Actions para outros SOs
 ~~~
 
-Outras opções: \`--output dist\`, \`--tailwind\` (compila CSS para uso offline),
-\`--plugins\` (executa hooks de build de pacotes confiáveis) e \`--wizard\`.
+Outras opções: `--output dist`, `--tailwind` (compila CSS para uso offline),
+`--plugins` (executa hooks de build de pacotes confiáveis) e `--wizard`.
 
-O build gera \`dist/<nome>/\` contendo o executável, diretórios da
-aplicação, manifesto \`.vela-app.json\`, script \`Instalar.sh\` (Linux) ou
-\`Instalar.cmd\` (Windows) quando \`--installer\` foi solicitado, além de um
-ZIP versionado em \`dist/\` e seu arquivo \`.zip.sha256\`.
+O build gera `dist/<nome>/` contendo o executável, diretórios da
+aplicação, manifesto `.vela-app.json`, script `Instalar.sh` (Linux) ou
+`Instalar.cmd` (Windows) quando `--installer` foi solicitado, além de um
+ZIP versionado em `dist/` e seu arquivo `.zip.sha256`.
 
 ### Ícone, nome e extensões
 
-No \`config/settings.py\`:
+No `config/settings.py`:
 
 ~~~python
 APP_TITLE = "DFD Studio"
@@ -63,39 +63,39 @@ APP_DESCRIPTION = "Editor visual de diagramas"
 APP_FILE_EXTENSIONS = [".dfd.json"]
 ~~~
 
-Windows requer ícone \`.ico\` para o executável; macOS, \`.icns\`; Linux
-aceita \`.png\` para janela e atalho. O ícone é passado ao
-\`webview.start(icon=...)\`, quando suportado.
+Windows requer ícone `.ico` para o executável; macOS, `.icns`; Linux
+aceita `.png` para janela e atalho. O ícone é passado ao
+`webview.start(icon=...)`, quando suportado.
 
 ### Instalação
 
-- Linux usuário: copia para \`~/.local/share/vela-apps/<app>\`, registra
-  \`.desktop\` em \`~/.local/share/applications/\` e tipos MIME opcionais.
+- Linux usuário: copia para `~/.local/share/vela-apps/<app>`, registra
+  `.desktop` em `~/.local/share/applications/` e tipos MIME opcionais.
   A partir do menu, você pode **fixar manualmente** o app no dock/barra;
   forçar esse comportamento não é confiável nem apropriado.
-- Linux todos os usuários: \`installapp --scope system\` pede elevação
-  via Polkit, instala em \`/opt/vela/<app>\` e \`/usr/share/applications/\`.
-- Windows: cópia em \`%LOCALAPPDATA%/Programs/Vela/\` e atalho de menu
+- Linux todos os usuários: `installapp --scope system` pede elevação
+  via Polkit, instala em `/opt/vela/<app>` e `/usr/share/applications/`.
+- Windows: cópia em `%LOCALAPPDATA%/Programs/Vela/` e atalho de menu
   Iniciar usando WScript.Shell. A fixação na barra é opção do usuário.
 - macOS: compilação local experimental; um instalador macOS integrado
   ainda não está validado nesta versão.
 
-**Limite importante:** \`--installer\` gera scripts de instalação e integração
+**Limite importante:** `--installer` gera scripts de instalação e integração
 ao sistema, **não** um MSI/EXE do Inno Setup ou pacote DEB/RPM nativo.
 Esses formatos dependem de toolchains adicionais e devem ser
 implementados/testados separadamente. O Windows pode precisar do WebView2
 Runtime quando a GUI nativa for escolhida.
 
 O PyInstaller compila para o **SO no qual é executado**. O comando
-\`makeworkflow\` cria jobs Windows/Linux nativos (com PyQt6 no Linux)
-e publica artefatos em releases geradas por tags \`v*\`.
+`makeworkflow` cria jobs Windows/Linux nativos (com PyQt6 no Linux)
+e publica artefatos em releases geradas por tags `v*`.
 A compilação do Linux não inclui glibc; distribua para sistemas com
 versões compatíveis. A opção padrão de software rendering em Qt6 tenta
 contornar falhas GLX, sem substituir um driver gráfico correto.
 
 ### Recursos personalizados
 
-São incluídos \`apps/\`, \`config/\`, \`staticfiles/\` e, se existir,
-\`assets/\`. Dados do usuário, credenciais, caches e bancos pessoais
+São incluídos `apps/`, `config/`, `staticfiles/` e, se existir,
+`assets/`. Dados do usuário, credenciais, caches e bancos pessoais
 **não devem ser embutidos no executável**. Persistência fica em diretório
-próprio via \`vela.database.SQLiteStore\`.
+próprio via `vela.database.SQLiteStore`.
