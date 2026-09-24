@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """
 vela.log.logger
 Sistema de logging do Vela.

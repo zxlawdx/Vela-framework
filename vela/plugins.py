@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Pontos de extensao explicitamente ativados por projetos confiaveis."""
 from importlib.metadata import entry_points
 

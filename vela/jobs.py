@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Pool de tarefas IO/CPU para evitar trabalho pesado no thread de interface."""
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from threading import RLock

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Eventos Python -> JavaScript na janela Vela.
 
 JS:
