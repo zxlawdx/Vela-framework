@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Persistencia local SQLite com migrations SQL idempotentes por projeto."""
 from __future__ import annotations
 

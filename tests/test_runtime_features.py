@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Integração entre eventos, jobs, SQLite, plugins e templates."""
 import io
 import json

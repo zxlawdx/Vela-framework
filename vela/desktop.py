@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Utilitarios desktop opcionais: notificacao nativa e atualizacoes opt-in."""
 from __future__ import annotations
 import json

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Testes de build, instalacao e diagnostico sem compilar nem usar rede."""
 import json
 import os

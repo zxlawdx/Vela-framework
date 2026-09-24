@@ -61,3 +61,53 @@ jobs:
           ./dist/Meu-App-Vela/Meu-App-Vela --self-test
           test -f dist/Meu-App-Vela/Instalar.sh
           test -n "$(find dist -maxdepth 1 -name '*.zip' -print -quit)"
+
+  package-smoke:
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build and validate wheel and sdist
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          python -m twine check dist/*
+          python - <<'PY'
+          import glob, tarfile, zipfile
+          wheels = glob.glob("dist/*.whl")
+          sdists = glob.glob("dist/*.tar.gz")
+          assert len(wheels) == len(sdists) == 1, (wheels, sdists)
+          with zipfile.ZipFile(wheels[0]) as z:
+              names = z.namelist()
+              assert any(x.endswith("/licenses/LICENSE") for x in names), names
+              assert any(x.endswith("/licenses/NOTICE.md") for x in names), names
+              assert "vela/core/shell.html" in names, names
+              assert "vela/templates/project/config/settings.py" in names, names
+              assert "vela/templates/project/apps/home/templates/home.html" in names, names
+              meta = next(x for x in names if x.endswith(".dist-info/METADATA"))
+              assert b"License-Expression: MPL-2.0" in z.read(meta)
+          with tarfile.open(sdists[0], "r:gz") as t:
+              names = t.getnames()
+              assert any(x.endswith("/LICENSE") for x in names)
+              assert any(x.endswith("/CITATION.cff") for x in names)
+          PY
+      - name: Install wheel in a clean external venv
+        run: |
+          TMP="$(mktemp -d)"
+          python -m venv "$TMP/venv"
+          "$TMP/venv/bin/python" -m pip install dist/*.whl
+          cd "$TMP"
+          ./venv/bin/vela startproject example
+          test -f example/config/settings.py
+          test -f example/apps/home/templates/home.html
+          ./venv/bin/python -c "import vela; assert vela.__version__ == '0.2.1'"
+          cd example
+          ../venv/bin/python manage.py help | grep -F "init-process:instalation"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vela-pypi-packages
+          path: dist/*
+          retention-days: 14

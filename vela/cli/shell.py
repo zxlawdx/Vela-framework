@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """
 vela.cli.shell
 Shell interativo do Vela.

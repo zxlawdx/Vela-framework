@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Esquema OpenAPI basico e interface de testes offline, sem CDN."""
 import inspect
 
