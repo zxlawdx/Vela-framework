@@ -1,4 +1,5 @@
 import argparse
+import sys
 import shutil
 from pathlib import Path
 from importlib.resources import files
@@ -38,9 +39,17 @@ def main():
     start = subparsers.add_parser("startproject")
     start.add_argument("name")
 
-    args = parser.parse_args()
+    for name in ("buildapp", "installapp", "uninstallapp", "doctor",
+                 "makeworkflow", "init-process:instalation",
+                 "init-process:installation", "runapp", "collectstatic", "routes",
+                 "version", "logs", "shell", "help"):
+        subparsers.add_parser(name, add_help=False)
 
+    args, remaining = parser.parse_known_args()
     if args.command == "startproject":
         startproject(args.name)
+    elif args.command:
+        from vela.cli.commands import CommandRunner
+        CommandRunner().execute([args.command, *remaining])
     else:
         parser.print_help()

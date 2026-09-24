@@ -27,6 +27,15 @@ Comandos disponíveis:
   logs                      Exibe os logs mais recentes
   routes                    Lista as rotas registradas
   version                   Exibe a versão do framework
+  doctor [--gui qt6]        Diagnostica dependencias (--fix com consentimento)
+  buildapp                  Gera executavel nativo e pacote ZIP
+  buildapp --installer      Inclui instalador no pacote
+  buildapp --dry-run        Exibe plano de build sem executar
+  installapp [--bundle dir] Instala build e cria atalho no sistema
+  uninstallapp --slug name  Remove instalacao Linux do usuario
+  makeworkflow              Cria CI Linux/Windows + release por tags
+  init-process:instalation  Assistente grafico de build/instalacao (Next)
+  init-process:installation Alias com grafia corrigida
   help                      Exibe esta mensagem
 
 Exemplos:
@@ -58,6 +67,13 @@ class CommandRunner:
             "logs":          self.cmd_logs,
             "routes":        self.cmd_routes,
             "version":       self.cmd_version,
+            "buildapp":      self.cmd_buildapp,
+            "doctor":        self.cmd_doctor,
+            "installapp":    self.cmd_installapp,
+            "uninstallapp":  self.cmd_uninstallapp,
+            "makeworkflow":  self.cmd_makeworkflow,
+            "init-process:instalation": self.cmd_wizard,
+            "init-process:installation": self.cmd_wizard,
             "help":          lambda _: print(HELP_TEXT),
         }
 
@@ -262,3 +278,89 @@ def {name}_view(params: dict) -> str:
     def cmd_version(self, args):
         import vela
         print(f"\n  Vela Framework v{vela.__version__}\n")
+
+
+    # ─── Distribuicao e diagnostico ────────────────────────────────────────
+
+    def cmd_buildapp(self, args):
+        import argparse
+        from vela.cli.build import BuildOptions, build_app
+        parser = argparse.ArgumentParser(prog="python manage.py buildapp")
+        parser.add_argument("--gui", choices=["auto", "qt6", "qt5", "gtk", "native"],
+                            default="auto")
+        parser.add_argument("--icon", default="")
+        parser.add_argument("--installer", action="store_true")
+        parser.add_argument("--output", default="dist")
+        parser.add_argument("--dry-run", action="store_true")
+        parser.add_argument("--tailwind", action="store_true")
+        parser.add_argument("--wizard", action="store_true")
+        parsed = parser.parse_args(args)
+        if parsed.wizard:
+            return self.cmd_wizard([])
+        return build_app(options=BuildOptions(
+            gui=parsed.gui, icon=parsed.icon, installer=parsed.installer,
+            output=parsed.output, dry_run=parsed.dry_run, tailwind=parsed.tailwind))
+
+    def cmd_doctor(self, args):
+        import argparse
+        import dataclasses
+        import json
+        from vela.cli.doctor import diagnose, print_report, remedy
+        parser = argparse.ArgumentParser(prog="python manage.py doctor")
+        parser.add_argument("--gui", choices=["auto", "qt6", "qt5", "gtk", "native"],
+                            default="auto")
+        parser.add_argument("--json", action="store_true")
+        parser.add_argument("--fix", action="store_true")
+        parsed = parser.parse_args(args)
+        checks = diagnose(backend=parsed.gui)
+        if parsed.json:
+            print(json.dumps([dataclasses.asdict(x) for x in checks],
+                             ensure_ascii=False, indent=2))
+        else:
+            print_report(checks)
+        if parsed.fix:
+            remedy(checks)
+
+    def cmd_installapp(self, args):
+        import argparse
+        from pathlib import Path
+        from vela.cli.build import identity, read_settings
+        from vela.cli.install import install_bundle
+        parser = argparse.ArgumentParser(prog="python manage.py installapp")
+        parser.add_argument("--bundle", default=None)
+        parser.add_argument("--scope", choices=["user", "system"], default="user")
+        parsed = parser.parse_args(args)
+        if parsed.bundle:
+            bundle = Path(parsed.bundle)
+        else:
+            meta = identity(read_settings(Path.cwd()))
+            bundle = Path.cwd() / "dist" / meta["slug"]
+        return install_bundle(bundle, parsed.scope)
+
+    def cmd_uninstallapp(self, args):
+        import argparse
+        from vela.cli.install import uninstall_app
+        parser = argparse.ArgumentParser(prog="python manage.py uninstallapp")
+        parser.add_argument("--slug", required=True)
+        parser.add_argument("--scope", choices=["user", "system"], default="user")
+        parser.add_argument("--yes", action="store_true")
+        parsed = parser.parse_args(args)
+        if not parsed.yes:
+            answer = input(f"Remover {parsed.slug} ({parsed.scope})? [s/N] ")
+            if answer.strip().lower() not in ("s", "sim", "y"):
+                print("Cancelado.")
+                return
+        uninstall_app(parsed.slug, parsed.scope)
+        print("Aplicativo removido.")
+
+    def cmd_makeworkflow(self, args):
+        import argparse
+        from vela.cli.workflow import generate_workflow
+        parser = argparse.ArgumentParser(prog="python manage.py makeworkflow")
+        parser.add_argument("--force", action="store_true")
+        parsed = parser.parse_args(args)
+        print(f"Workflow criado: {generate_workflow(force=parsed.force)}")
+
+    def cmd_wizard(self, args):
+        from vela.cli.wizard import launch_wizard
+        return launch_wizard()
