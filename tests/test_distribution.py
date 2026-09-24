@@ -82,6 +82,41 @@ class DistributionTests(unittest.TestCase):
             self.assertEqual(legacy_pkg_resources_collect_args(), [])
             validate_legacy_pkg_resources()
 
+    def test_venv_detection_uses_pyvenv_cfg(self):
+        from vela.cli.build import linux_venv_info
+        fake_venv = self.root / "venv"
+        fake_venv.mkdir()
+        cfg = fake_venv / "pyvenv.cfg"
+        with patch("vela.cli.build.sys.prefix", str(fake_venv)):
+            with patch("vela.cli.build.sys.base_prefix", "/usr"):
+                cfg.write_text("home = /usr/bin\ninclude-system-site-packages = true\n")
+                info = linux_venv_info()
+                self.assertTrue(info["active"])
+                self.assertTrue(info["system_site_packages"])
+                cfg.write_text("include-system-site-packages = false\n")
+                self.assertFalse(linux_venv_info()["system_site_packages"])
+
+    def test_qt_shared_venv_and_gtk_isolated_are_reported(self):
+        from vela.cli.build import gui_venv_messages
+        with patch("vela.cli.build.platform.system", return_value="Linux"):
+            with patch("vela.cli.build.linux_venv_info",
+                       return_value={"active": True,
+                                     "system_site_packages": True}):
+                self.assertIn("--system-site-packages",
+                              gui_venv_messages("qt6")[0])
+            with patch("vela.cli.build.linux_venv_info",
+                       return_value={"active": True,
+                                     "system_site_packages": False}):
+                with patch("vela.cli.build._module_exists", return_value=False):
+                    self.assertIn("--system-site-packages",
+                                  gui_venv_messages("gtk")[0])
+                with patch("vela.cli.build._module_exists", return_value=True):
+                    self.assertEqual(gui_venv_messages("gtk"), [])
+            with patch("vela.cli.build.linux_venv_info",
+                       return_value={"active": False,
+                                     "system_site_packages": False}):
+                self.assertEqual(gui_venv_messages("gtk"), [])
+
     def test_missing_jaraco_fails_before_build(self):
         from vela.cli.build import validate_legacy_pkg_resources
         with patch("vela.cli.build._module_exists",

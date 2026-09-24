@@ -17,7 +17,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from vela.cli.build import (backend_for, LEGACY_PKG_RESOURCES_MODULES,
-                            LEGACY_PKG_RESOURCES_PIP)
+                            LEGACY_PKG_RESOURCES_PIP, linux_venv_info,
+                            gui_venv_messages, inherited_pkg_resources_warning)
 
 
 @dataclass
@@ -53,6 +54,22 @@ def diagnose(root=None, backend="auto"):
         ok = _module_exists(package)
         checks.append(Check(name, "ok" if ok else "missing",
                             "Disponivel" if ok else "Nao instalado", hint))
+    if platform.system() == "Linux":
+        info = linux_venv_info()
+        status = ("Compartilhado" if info["system_site_packages"] else
+                  "Isolado" if info["active"] else "Python global")
+        messages = gui_venv_messages(gui)
+        checks.append(Check(
+            "Ambiente virtual Linux",
+            "warning" if messages else "ok",
+            status + " — " + info["python"],
+            " ".join(messages),
+        ))
+        inherited = inherited_pkg_resources_warning()
+        if inherited:
+            checks.append(Check("Setuptools herdado", "warning", inherited,
+                                "Utilize um venv isolado com Qt6, ou instale "
+                                "as dependencias de build neste venv."))
     # Detecta o mesmo problema de empacotamento jaraco antes da GUI de build.
     # Bibliotecas jaraco instaladas no SO fora deste venv nao resolvem.
     if _module_exists("pkg_resources"):
@@ -77,7 +94,9 @@ def diagnose(root=None, backend="auto"):
         gi = _module_exists("gi")
         checks.append(Check("GTK/PyGObject", "ok" if gi else "missing",
                             "Disponivel" if gi else "Nao instalado",
-                            "Instale python3-gi, gir1.2-gtk-3.0 e WebKit2GTK"))
+                            "Se usa GTK, instale python3-gi/GTK/WebKit no SO; "
+                            "caso gi nao esteja no venv, crie OUTRO ambiente "
+                            "compativel com --system-site-packages ou use Qt6."))
     if platform.system() == "Linux":
         for library in ("GL", "EGL", "xcb-cursor", "xkbcommon-x11", "nss3"):
             ok = bool(ctypes.util.find_library(library))

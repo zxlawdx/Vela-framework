@@ -46,6 +46,83 @@ def _module_exists(name):
         return False
 
 
+def linux_venv_info():
+    """Detecta isolamento com pyvenv.cfg (o diretorio atual nao importa)."""
+    active = sys.prefix != getattr(sys, "base_prefix", sys.prefix)
+    config = Path(sys.prefix) / "pyvenv.cfg"
+    shared = False
+    if active and config.is_file():
+        for line in config.read_text(encoding="utf-8").splitlines():
+            key, sep, value = line.partition("=")
+            if sep and key.strip().lower() == "include-system-site-packages":
+                shared = value.strip().lower() == "true"
+                break
+    return {"active": active, "system_site_packages": shared,
+            "python": sys.executable, "prefix": sys.prefix,
+            "config": str(config) if config.is_file() else None}
+
+
+def module_is_local_to_venv(module):
+    """None = fora de venv, ausente ou modulo embutido."""
+    info = linux_venv_info()
+    if not info["active"]:
+        return None
+    try:
+        spec = importlib.util.find_spec(module)
+    except (ModuleNotFoundError, ValueError):
+        return None
+    if spec is None:
+        return None
+    origin = spec.origin or next(iter(spec.submodule_search_locations or []), None)
+    if not origin:
+        return None
+    try:
+        Path(origin).resolve().relative_to(Path(sys.prefix).resolve())
+    except ValueError:
+        return False
+    return True
+
+
+def gui_venv_messages(gui):
+    """Mensagens sem alterar automaticamente o ambiente do desenvolvedor."""
+    if platform.system() != "Linux":
+        return []
+    info = linux_venv_info()
+    if not info["active"]:
+        return []
+    if gui == "gtk" and not info["system_site_packages"] and not _module_exists("gi"):
+        return [
+            "GTK: este venv esta isolado e nao importa gi. "
+            "Instale python3-gi no SO e crie OUTRO venv usando "
+            "/usr/bin/python3 -m venv --system-site-packages .venv-gtk "
+            "(nao sobrescreva seu .venv atual), ou selecione --gui qt6."
+        ]
+    if gui in ("qt5", "qt6") and info["system_site_packages"]:
+        return [
+            "Qt: este venv usa --system-site-packages. Embora isso nao seja "
+            "erro por si so, pacotes globais de setuptools/jaraco podem "
+            "contaminar o PyInstaller. Prefira um venv ISOLADO para Qt "
+            "(python3 -m venv .venv-build) e instale as dependencias nele."
+        ]
+    return []
+
+
+def inherited_pkg_resources_warning():
+    """Localiza setuptools herdado, comum em venvs mistos no Linux."""
+    if platform.system() != "Linux":
+        return ""
+    info = linux_venv_info()
+    if not (info["active"] and info["system_site_packages"]):
+        return ""
+    if module_is_local_to_venv("pkg_resources") is False:
+        return (
+            "pkg_resources esta vindo do Python global em um venv "
+            "--system-site-packages. Instale os pacotes de build no proprio "
+            "venv; para Qt6, considere um ambiente isolado."
+        )
+    return ""
+
+
 def legacy_pkg_resources_collect_args():
     """Colete dependencias de pkg_resources somente quando ele esta presente."""
     if not _module_exists("pkg_resources"):
@@ -239,6 +316,11 @@ def build_app(root=None, options=None, notify=print):
         raise RuntimeError("PyInstaller ausente: pip install 'vela-framework[build]'")
     if plan["gui"] == "qt6" and importlib.util.find_spec("PyQt6") is None:
         raise RuntimeError("PyQt6 ausente: pip install 'vela-framework[qt6]'")
+    for warning in gui_venv_messages(plan["gui"]):
+        notify("AVISO: " + warning)
+    inherited = inherited_pkg_resources_warning()
+    if inherited:
+        notify("AVISO: " + inherited)
     if plan["gui"] == "qt5" and importlib.util.find_spec("PyQt5") is None:
         raise RuntimeError("PyQt5 ausente: instale PyQt5, PyQtWebEngine e qtpy")
 
@@ -318,7 +400,7 @@ def build_app(root=None, options=None, notify=print):
         check = subprocess.run([str(binary), "--self-test"], cwd=bundle,
                                capture_output=True, text=True, timeout=50, check=True)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        details = "\\n".join(str(item) for item in (
+        details = "\n".join(str(item) for item in (
             getattr(exc, "stdout", ""), getattr(exc, "stderr", "")) if item)
         hint = (" Verifique o extra de build: python -m pip install "
                 "'setuptools>=77,<82' 'jaraco.text>=3.12' "
@@ -327,7 +409,7 @@ def build_app(root=None, options=None, notify=print):
                 if "jaraco" in details or "pkg_resources" in details else "")
         raise RuntimeError(
             "O executavel nao passou no teste interno de runtime; "
-            "o ZIP nao sera gerado." + hint + "\\n" + details[-4500:]
+            "o ZIP nao sera gerado." + hint + "\n" + details[-4500:]
         ) from exc
     notify(check.stdout.strip() or "Runtime grafico empacotado corretamente.")
 
