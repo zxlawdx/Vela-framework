@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 class ApiRouter:
     def __init__(self):
         self.routes = []

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 from bottle import Bottle, request, response, run, static_file
 from threading import Thread
 from pathlib import Path

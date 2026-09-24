@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Assistente visual de compilacao/instalacao. Sem comandos manuais.
 
 python manage.py init-process:instalation
