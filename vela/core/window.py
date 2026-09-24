@@ -13,6 +13,7 @@ pois a origin fica consistente em http://127.0.0.1:PORT.
 """
 
 from pathlib import Path
+import os
 import webview
 
 from vela.log.logger import VelaLogger
@@ -106,6 +107,7 @@ class DesktopWindow:
                 except (ValueError, OSError):
                     icon_file = None
         icon_arg = str(icon_file.resolve()) if icon_file and icon_file.is_file() else None
-        webview.start(debug=self.debug, icon=icon_arg)
+        gui = os.environ.get("VELA_GUI") or None
+        webview.start(gui=gui, debug=self.debug, icon=icon_arg)
 
         self.logger.info("Janela encerrada.")

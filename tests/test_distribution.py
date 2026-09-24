@@ -36,6 +36,7 @@ class DistributionTests(unittest.TestCase):
                             notify=lambda _: None)
         self.assertEqual(results["meta"]["slug"], "Teste-Vela")
         self.assertIn("apps", results["command"])
+        self.assertIn("qtpy", results["command"])
         self.assertFalse((self.root / ".vela-build").exists())
         self.assertFalse((self.root / "staticfiles").exists())
 
@@ -48,7 +49,20 @@ class DistributionTests(unittest.TestCase):
         self.assertIn('scope = "system" if "--scope=system" in sys.argv', s)
         self.assertIn('"--vela-install" not in sys.argv', s)
         self.assertIn('PYWEBVIEW_GUI', launcher_source("gtk"))
+        self.assertIn('import qtpy', s)
+        self.assertIn('import webview.platforms.qt', s)
+        self.assertIn('import webview.platforms.gtk', launcher_source("gtk"))
+        self.assertIn('VELA_GUI', s)
         self.assertNotIn("sudo", s)
+
+    def test_builder_checks_frozen_gui_runtime(self):
+        import inspect
+        from vela.core.window import DesktopWindow
+        self.assertIn("webview.start(gui=gui", inspect.getsource(DesktopWindow.run))
+        self.assertIn('"--self-test"', inspect.getsource(build_app))
+        gtk = build_plan(self.root, BuildOptions(gui="gtk"))
+        self.assertIn("gi", gtk["command"])
+        self.assertIn("webview.platforms.gtk", gtk["command"])
 
     def test_icon_must_exist(self):
         with self.assertRaises(FileNotFoundError):

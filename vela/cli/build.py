@@ -68,10 +68,16 @@ def launcher_source(gui):
         'os.environ.setdefault("VELA_PRODUCTION", "1")\n'
         'from pathlib import Path\n'
         f'GUI = {gui!r}\n'
-        'if GUI == "gtk":\n'
+        'if GUI == "gtk" and "--vela-install" not in sys.argv:\n'
         '    os.environ["PYWEBVIEW_GUI"] = "gtk"\n'
+        '    os.environ["VELA_GUI"] = "gtk"\n'
+        '    try:\n'
+        '        import webview.platforms.gtk\n'
+        '    except (ImportError, ValueError) as exc:\n'
+        '        raise RuntimeError("GTK exige extensoes Python gi/Gtk/WebKit2 no binario. Recompile com Python que importa gi ou use --gui qt6.") from exc\n'
         'if GUI in ("qt6", "qt5") and "--vela-install" not in sys.argv:\n'
         '    os.environ["PYWEBVIEW_GUI"] = "qt"\n'
+        '    os.environ["VELA_GUI"] = "qt"\n'
         '    os.environ["QT_API"] = "pyqt6" if GUI == "qt6" else "pyqt5"\n'
         '    if sys.platform.startswith("linux") and os.getenv("VELA_HARDWARE_ACCELERATION") != "1":\n'
         '        os.environ.setdefault("QT_XCB_GL_INTEGRATION", "none")\n'
@@ -84,6 +90,13 @@ def launcher_source(gui):
         '        from PyQt6.QtWebEngineWidgets import QWebEngineView  # noqa\n'
         '    else:\n'
         '        from PyQt5.QtWebEngineWidgets import QWebEngineView  # noqa\n'
+        '    try:\n'
+        '        import qtpy\n'
+        '        from qtpy import QtCore, QtWebChannel, QtWebEngineWidgets\n'
+        '        import webview.platforms.qt\n'
+        '        assert (qtpy.PYQT6 if GUI == "qt6" else qtpy.PYQT5), "QtPy selecionou o backend errado"\n'
+        '    except (ImportError, AssertionError) as exc:\n'
+        '        raise RuntimeError("Dependencias qtpy/PyQt WebEngine nao foram empacotadas. Recompile com o Vela atualizado.") from exc\n'
         'ROOT = Path(sys.executable).resolve().parent if getattr(sys,"frozen",False) else Path(__file__).resolve().parent.parent\n'
         'os.chdir(ROOT)\n'
         'sys.path.insert(0, str(ROOT))\n'
@@ -137,10 +150,16 @@ def build_plan(root, options):
     # Coloca-los via --add-data moveria arquivos apenas para _internal/ no
     # PyInstaller 6, quebrando import dinamico de templates no Vela.
     if gui in ("qt5", "qt6"):
-        cmd += ["--hidden-import", "webview.platforms.qt",
+        cmd += ["--collect-all", "qtpy",
+                "--hidden-import", "qtpy",
+                "--hidden-import", "webview.platforms.qt",
                 "--hidden-import", "qtpy.QtWebEngineWidgets",
                 "--hidden-import", "qtpy.QtWebEngineCore",
                 "--hidden-import", "qtpy.QtWebChannel"]
+    elif gui == "gtk":
+        cmd += ["--collect-all", "gi", "--hidden-import", "webview.platforms.gtk",
+                "--hidden-import", "gi.repository.Gtk",
+                "--hidden-import", "gi.repository.WebKit2"]
     if icon_path:
         cmd += ["--icon", str(icon_path)]
     cmd.append(str(entry))
@@ -171,6 +190,35 @@ def build_app(root=None, options=None, notify=print):
         raise RuntimeError("PyQt6 ausente: pip install 'vela-framework[qt6]'")
     if plan["gui"] == "qt5" and importlib.util.find_spec("PyQt5") is None:
         raise RuntimeError("PyQt5 ausente: instale PyQt5, PyQtWebEngine e qtpy")
+
+    # Validacao na MESMA instalacao Python/PyInstaller do desenvolvedor.
+    gui = plan["gui"]
+    if gui in ("qt5", "qt6"):
+        if importlib.util.find_spec("qtpy") is None:
+            raise RuntimeError("QtPy ausente no ambiente do build. Instale o extra vela-framework[qt6].")
+        expected = "pyqt6" if gui == "qt6" else "pyqt5"
+        selected = os.environ.get("QT_API", "").lower()
+        if selected and selected != expected:
+            raise RuntimeError(f"QT_API={selected} conflita com a opcao --gui {gui}.")
+        os.environ["QT_API"] = expected
+        os.environ["PYWEBVIEW_GUI"] = "qt"
+        try:
+            importlib.import_module(
+                "PyQt6.QtWebEngineWidgets" if gui == "qt6" else "PyQt5.QtWebEngineWidgets")
+            importlib.import_module("qtpy.QtWebEngineWidgets")
+            importlib.import_module("webview.platforms.qt")
+        except (ImportError, ValueError) as exc:
+            raise RuntimeError(f"Backend {gui} indisponivel neste ambiente: {exc}") from exc
+    elif gui == "gtk":
+        try:
+            importlib.import_module("webview.platforms.gtk")
+        except (ImportError, ValueError) as exc:
+            raise RuntimeError(
+                "O Python do build nao consegue importar gi/Gtk/WebKit2, mesmo "
+                "que GTK esteja instalado no sistema. Use --gui qt6 ou "
+                "Python compativel com python3-gi."
+            ) from exc
+
     from vela.cli.collectstatic import collect_static
     notify("Coletando estaticos...")
     if options.tailwind:
@@ -191,7 +239,13 @@ def build_app(root=None, options=None, notify=print):
         from vela.plugins import apply_build_hooks
         apply_build_hooks(plan)
     notify("Iniciando PyInstaller...")
-    subprocess.run(plan["command"], cwd=plan["root"], check=True)
+    build_env = dict(os.environ)
+    if gui in ("qt5", "qt6"):
+        build_env["QT_API"] = "pyqt6" if gui == "qt6" else "pyqt5"
+        build_env["PYWEBVIEW_GUI"] = "qt"
+    elif gui == "gtk":
+        build_env["PYWEBVIEW_GUI"] = "gtk"
+    subprocess.run(plan["command"], cwd=plan["root"], env=build_env, check=True)
     bundle = plan["bundle"]
     if not bundle.is_dir():
         raise RuntimeError("Binario nao encontrado apos o build")
@@ -203,6 +257,22 @@ def build_app(root=None, options=None, notify=print):
             shutil.rmtree(destination)
         shutil.copytree(plan["root"] / folder, destination,
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    # Reexecuta o binario congelado: --self-test agora carrega o backend
+    # grafico real e falha quando qtpy/gi nao foram empacotados.
+    binary = bundle / (plan["meta"]["slug"] +
+                       (".exe" if plan["system"] == "windows" else ""))
+    notify("Validando o runtime grafico DENTRO do executavel...")
+    try:
+        check = subprocess.run([str(binary), "--self-test"], cwd=bundle,
+                               capture_output=True, text=True, timeout=50, check=True)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        details = getattr(exc, "stderr", "") or getattr(exc, "stdout", "")
+        raise RuntimeError(
+            "O executavel nao passou no teste interno de GUI; o ZIP nao "
+            "sera gerado. " + str(details)[-3500:]
+        ) from exc
+    notify(check.stdout.strip() or "Runtime grafico empacotado corretamente.")
+
     meta = dict(plan["meta"], platform=plan["system"], backend=plan["gui"],
                 executable=plan["meta"]["slug"] +
                 (".exe" if plan["system"] == "windows" else ""))
