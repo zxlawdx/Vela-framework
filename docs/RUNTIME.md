@@ -31,8 +31,8 @@ window.addEventListener("vela:event", event => {
 });
 ~~~
 
-Em Python puro, \`EventBus.on(name, callback)\` registra ouvintes e
-\`EventBus.off(name, callback)\` os remove.
+Em Python puro, `EventBus.on(name, callback)` registra ouvintes e
+`EventBus.off(name, callback)` os remove.
 
 ## SQLite e migrations
 
@@ -45,10 +45,10 @@ with store.connect() as db:
     db.commit()
 ~~~
 
-Os arquivos \`migrations/*.sql\` são aplicados em ordem lexicográfica
+Os arquivos `migrations/*.sql` são aplicados em ordem lexicográfica
 e cada SHA-256 é registrado. A alteração de migration já aplicada gera
 erro em vez de corromper a trilha de versões. Também existe
-\`python manage.py dbmigrate --dir migrations\`.
+`python manage.py dbmigrate --dir migrations`.
 Por padrão, o banco fica no diretório de dados do usuário do SO.
 
 ## Notificações e consulta de atualizações
@@ -64,8 +64,8 @@ if info["available"]:
 A consulta é **opt-in** e usa GitHub Releases; não faz download nem
 instala atualizações silenciosamente. Linux usa notify-send, macOS
 osascript; no Windows, notificações dependem do extra opcional
-\`pip install "vela-framework[notifications]"\`. Também é possível
-\`python manage.py checkupdates --repo owner/repo\`.
+`pip install "vela-framework[notifications]"`. Também é possível
+`python manage.py checkupdates --repo owner/repo`.
 
 ## Plugins de build
 
@@ -79,6 +79,6 @@ def minha_integracao(plan):
 ~~~
 
 Pacotes confiáveis podem registrar um entry point
-\`[project.entry-points."vela.build_hooks"]\`. Para usar, selecione
-\`python manage.py buildapp --plugins\`. Hooks executam código Python
+`[project.entry-points."vela.build_hooks"]`. Para usar, selecione
+`python manage.py buildapp --plugins`. Hooks executam código Python
 dos pacotes instalados: **ative apenas plugins em que confia**.
