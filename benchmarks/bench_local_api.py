@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Microbenchmark de despacho local. Nao inclui GUI, rede, DB nem Waitress.
 
 python benchmarks/bench_local_api.py --requests 10000

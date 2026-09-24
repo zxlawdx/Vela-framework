@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Contratos da API/documentacao e regressoes de desempenho sem rede."""
 import inspect
 import io

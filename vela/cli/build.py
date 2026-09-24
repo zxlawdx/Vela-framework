@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Compilacao nativa Vela via PyInstaller. Build nao usa sudo."""
 from __future__ import annotations
 import hashlib

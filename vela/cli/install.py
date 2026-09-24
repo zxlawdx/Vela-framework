@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Instalacao desktop e atalhos. Nao solicita nem armazena senhas."""
 from __future__ import annotations
 

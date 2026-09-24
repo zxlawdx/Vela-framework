@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Diagnostico multiplataforma do ambiente de desenvolvimento Vela.
 
 A instalacao de pacotes exige confirmacao. NUNCA le senhas; usa pkexec
