@@ -77,7 +77,10 @@ class DistributionTests(unittest.TestCase):
             self.assertIn("pkg_resources", flags)
             for module in LEGACY_PKG_RESOURCES_MODULES:
                 self.assertIn(module, flags)
-            validate_legacy_pkg_resources()
+            with patch("vela.cli.build.importlib.import_module",
+                       return_value=object()) as imported:
+                validate_legacy_pkg_resources()
+                imported.assert_called_with("pkg_resources")
         with patch("vela.cli.build._module_exists", return_value=False):
             self.assertEqual(legacy_pkg_resources_collect_args(), [])
             validate_legacy_pkg_resources()
@@ -116,6 +119,17 @@ class DistributionTests(unittest.TestCase):
                        return_value={"active": False,
                                      "system_site_packages": False}):
                 self.assertEqual(gui_venv_messages("gtk"), [])
+
+    def test_conflicting_pkg_resources_is_rejected_before_build(self):
+        from vela.cli.build import (LEGACY_PKG_RESOURCES_MODULES,
+                                    validate_legacy_pkg_resources)
+        with patch("vela.cli.build._module_exists",
+                   side_effect=lambda name: name == "pkg_resources"
+                   or name in LEGACY_PKG_RESOURCES_MODULES):
+            with patch("vela.cli.build.importlib.import_module",
+                       side_effect=ImportError("broken global jaraco")):
+                with self.assertRaisesRegex(RuntimeError, "conflito"):
+                    validate_legacy_pkg_resources()
 
     def test_missing_jaraco_fails_before_build(self):
         from vela.cli.build import validate_legacy_pkg_resources

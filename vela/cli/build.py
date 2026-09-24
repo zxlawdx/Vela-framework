@@ -147,6 +147,18 @@ def validate_legacy_pkg_resources():
             "'jaraco.context>=5' 'more-itertools>=10'. "
             "Depois execute o build novamente."
         )
+    # find_spec pode identificar modulos presentes em diretorios diferentes
+    # num venv --system-site-packages. O import real detecta incompatibilidades
+    # antes de rodar o hook pyi_rth_pkgres no binario final.
+    try:
+        importlib.import_module("pkg_resources")
+    except (ImportError, AttributeError) as exc:
+        raise RuntimeError(
+            "pkg_resources foi encontrado, mas nao importa corretamente "
+            "neste ambiente Python. Corrija o conflito de setuptools/jaraco "
+            "no venv ou use um venv isolado para Qt6. Detalhe: " + str(exc)
+        ) from exc
+
 
 
 def platform_id():
