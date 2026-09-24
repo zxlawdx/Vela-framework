@@ -294,12 +294,14 @@ def {name}_view(params: dict) -> str:
         parser.add_argument("--dry-run", action="store_true")
         parser.add_argument("--tailwind", action="store_true")
         parser.add_argument("--wizard", action="store_true")
+        parser.add_argument("--plugins", action="store_true")
         parsed = parser.parse_args(args)
         if parsed.wizard:
             return self.cmd_wizard([])
         return build_app(options=BuildOptions(
             gui=parsed.gui, icon=parsed.icon, installer=parsed.installer,
-            output=parsed.output, dry_run=parsed.dry_run, tailwind=parsed.tailwind))
+            output=parsed.output, dry_run=parsed.dry_run, tailwind=parsed.tailwind,
+            plugins=parsed.plugins))
 
     def cmd_doctor(self, args):
         import argparse

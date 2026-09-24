@@ -22,6 +22,7 @@ class BuildOptions:
     output: str = "dist"
     dry_run: bool = False
     tailwind: bool = False
+    plugins: bool = False
 
 
 def platform_id():
@@ -170,6 +171,9 @@ def build_app(root=None, options=None, notify=print):
                    verbose=False, skip_tailwind=not options.tailwind)
     plan["entry"].parent.mkdir(parents=True, exist_ok=True)
     plan["entry"].write_text(launcher_source(plan["gui"]), encoding="utf-8")
+    if options.plugins:
+        from vela.plugins import apply_build_hooks
+        apply_build_hooks(plan)
     notify("Iniciando PyInstaller...")
     subprocess.run(plan["command"], cwd=plan["root"], check=True)
     bundle = plan["bundle"]

@@ -1,5 +1,7 @@
 import os
 import re
+from functools import lru_cache
+from pathlib import Path
 
 
 # ─── Funções de resolução ─────────────────────────────────────────────────────
@@ -129,6 +131,12 @@ def render_string(
 
     return processed
 
+@lru_cache(maxsize=256)
+def _read_template_cached(path, mtime_ns, size):
+    # Chave inclui estatisticas para invalidar automaticamente em dev.
+    return Path(path).read_text(encoding="utf-8")
+
+
 def render_template(
     template_path: str,
     context: dict = None,
@@ -142,8 +150,8 @@ def render_template(
     if not os.path.exists(full_path):
         raise FileNotFoundError(f"Template não encontrado: {full_path}")
 
-    with open(full_path, encoding="utf-8") as f:
-        source = f.read()
+    metadata = os.stat(full_path)
+    source = _read_template_cached(full_path, metadata.st_mtime_ns, metadata.st_size)
 
     return render_string(
         source,

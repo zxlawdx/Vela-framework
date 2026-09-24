@@ -78,6 +78,7 @@ class VelaApp:
 
         config = {
             "title": "Vela App",
+            "icon": "",
 
             "layout": {
                 "sidebar": True,
@@ -114,6 +115,8 @@ class VelaApp:
         if s:
             if hasattr(s, "APP_TITLE"):
                 config["title"] = s.APP_TITLE
+            if hasattr(s, "APP_ICON"):
+                config["icon"] = s.APP_ICON
 
             if hasattr(s, "ENTRY_ROUTE"):
                 config["entry_route"] = s.ENTRY_ROUTE
@@ -270,6 +273,7 @@ class VelaApp:
             host=c["api"]["host"],
             port=c["api"]["port"],
             shell_mode=c.get("shell_mode", "http"),
+            icon=c.get("icon", ""),
         )
 
         window.run()

@@ -32,6 +32,7 @@ class DesktopWindow:
         host: str = "127.0.0.1",
         port: int = 8000,
         shell_mode: str = "http",
+        icon: str = "",
     ):
         self.title = title
         self.width = width
@@ -42,6 +43,7 @@ class DesktopWindow:
         self.host = host
         self.port = port
         self.shell_mode = shell_mode
+        self.icon = icon
         self.logger = VelaLogger("Window")
 
     def _get_shell_url(self) -> str:
@@ -88,7 +90,22 @@ class DesktopWindow:
             )
 
         window.events.loaded += on_loaded
+        if self.bridge and hasattr(self.bridge, "_attach_window"):
+            self.bridge._attach_window(window)
 
-        webview.start(debug=self.debug)
+
+        # Qt e GTK aceitam icone no start; Windows usa icone do executavel.
+        icon_file = Path(self.icon) if self.icon else None
+        if not icon_file or not icon_file.is_file():
+            import json
+            manifest = Path.cwd() / ".vela-app.json"
+            if manifest.is_file():
+                try:
+                    meta = json.loads(manifest.read_text(encoding="utf-8"))
+                    icon_file = Path.cwd() / meta.get("icon", "")
+                except (ValueError, OSError):
+                    icon_file = None
+        icon_arg = str(icon_file.resolve()) if icon_file and icon_file.is_file() else None
+        webview.start(debug=self.debug, icon=icon_arg)
 
         self.logger.info("Janela encerrada.")

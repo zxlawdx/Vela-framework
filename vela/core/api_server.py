@@ -238,18 +238,17 @@ class ApiServer:
 
         def wrapper():
             t0 = time.perf_counter()
-            data = request.json or {}
-
-            context = {
-                "query": dict(request.query),
-                "headers": dict(request.headers),
-                "body": data,
-                "json": data,
-                "method": request.method,
-                "path": request.path,
-            }
-
+            if argument in ("data", "context"):
+                data = request.json or {}
             if argument == "context":
+                context = {
+                    "query": dict(request.query),
+                    "headers": dict(request.headers),
+                    "body": data,
+                    "json": data,
+                    "method": request.method,
+                    "path": request.path,
+                }
                 result = handler(context)
             elif argument == "data":
                 if hasattr(annotation, "model_validate"):
