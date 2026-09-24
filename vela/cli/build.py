@@ -129,8 +129,9 @@ def build_plan(root, options):
            str(root / ".vela-build"), "--collect-all", "vela",
            "--collect-submodules", "apps", "--collect-submodules", "config",
            "--hidden-import", "config.wsgi"]
-    for folder in folders:
-        cmd += ["--add-data", str(root / folder) + os.pathsep + folder]
+    # Arquivos do projeto sao copiados PARA A RAIZ do bundle apos PyInstaller.
+    # Coloca-los via --add-data moveria arquivos apenas para _internal/ no
+    # PyInstaller 6, quebrando import dinamico de templates no Vela.
     if gui in ("qt5", "qt6"):
         cmd += ["--hidden-import", "webview.platforms.qt",
                 "--hidden-import", "qtpy.QtWebEngineWidgets",
@@ -141,7 +142,8 @@ def build_plan(root, options):
     cmd.append(str(entry))
     return {"root": root, "meta": meta, "gui": gui, "system": system,
             "icon": icon_path, "output": output, "entry": entry,
-            "bundle": output / meta["slug"], "command": cmd}
+            "bundle": output / meta["slug"], "command": cmd,
+            "folders": folders}
 
 
 def sha256(path):
@@ -189,6 +191,14 @@ def build_app(root=None, options=None, notify=print):
     bundle = plan["bundle"]
     if not bundle.is_dir():
         raise RuntimeError("Binario nao encontrado apos o build")
+    # O Vela resolve templates e estaticos a partir do cwd; distribua-os
+    # junto ao executavel (nao exclusivamente em _internal).
+    for folder in plan["folders"]:
+        destination = bundle / folder
+        if destination.exists():
+            shutil.rmtree(destination)
+        shutil.copytree(plan["root"] / folder, destination,
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     meta = dict(plan["meta"], platform=plan["system"], backend=plan["gui"],
                 executable=plan["meta"]["slug"] +
                 (".exe" if plan["system"] == "windows" else ""))
