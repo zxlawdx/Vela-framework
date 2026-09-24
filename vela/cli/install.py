@@ -141,7 +141,8 @@ def install_bundle(bundle, scope="user", notify=print):
         start_menu = Path(os.environ.get("APPDATA", str(Path.home() / "AppData/Roaming")))
         start_menu = start_menu / "Microsoft/Windows/Start Menu/Programs"
         start_menu.mkdir(parents=True, exist_ok=True)
-        shortcut = start_menu / (meta["name"] + ".lnk")
+        # O nome exibido pode ser livre; o arquivo de atalho usa slug validado.
+        shortcut = start_menu / (meta["slug"] + ".lnk")
         def ps_string(value):
             return "'" + str(value).replace("'", "''") + "'"
         script = (

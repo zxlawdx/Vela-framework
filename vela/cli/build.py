@@ -67,6 +67,8 @@ def launcher_source(gui):
         'import multiprocessing; multiprocessing.freeze_support()\n'
         'from pathlib import Path\n'
         f'GUI = {gui!r}\n'
+        'if GUI == "gtk":\n'
+        '    os.environ["PYWEBVIEW_GUI"] = "gtk"\n'
         'if GUI in ("qt6", "qt5"):\n'
         '    os.environ["PYWEBVIEW_GUI"] = "qt"\n'
         '    os.environ["QT_API"] = "pyqt6" if GUI == "qt6" else "pyqt5"\n'

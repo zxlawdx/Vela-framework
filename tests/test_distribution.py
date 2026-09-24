@@ -44,6 +44,7 @@ class DistributionTests(unittest.TestCase):
         compile(s, "__vela_launcher__.py", "exec")
         self.assertIn("QT_XCB_GL_INTEGRATION", s)
         self.assertIn("--vela-install", s)
+        self.assertIn('PYWEBVIEW_GUI', launcher_source("gtk"))
         self.assertNotIn("sudo", s)
 
     def test_icon_must_exist(self):
