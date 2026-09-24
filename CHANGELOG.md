@@ -1,5 +1,13 @@
 # Histórico de alterações
 
+## 0.2.1 — correção de pacotes Linux congelados
+
+- Build aborta caso `gi` (GTK) ou `qtpy`/QtWebEngine (Qt) não estejam acessíveis no Python do desenvolvedor.
+- Força o backend escolhido ao pywebview, sem depender da ordem padrão de detecção.
+- PyInstaller coleta explicitamente QtPy (ou bindings GTK na opção correspondente).
+- Executa `--self-test` no executável congelado antes de gerar o ZIP; testes agora verificam imports da GUI selecionada, e não apenas pastas copiadas.
+- Documenta a distinção entre bibliotecas GTK do SO e os bindings `gi` usados por Python/venv.
+
 ## 0.2.0 — prévia de desenvolvimento (sem tag oficial)
 
 - buildapp: build nativo Windows/Linux e ZIP SHA-256 usando PyInstaller.
