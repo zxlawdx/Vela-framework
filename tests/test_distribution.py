@@ -65,6 +65,40 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("gi", gtk["command"])
         self.assertIn("webview.platforms.gtk", gtk["command"])
 
+    def test_pkg_resources_collects_jaraco_only_when_needed(self):
+        from vela.cli.build import (LEGACY_PKG_RESOURCES_MODULES,
+                                    legacy_pkg_resources_collect_args,
+                                    validate_legacy_pkg_resources)
+        with patch("vela.cli.build._module_exists",
+                   side_effect=lambda name: name == "pkg_resources"
+                   or name in LEGACY_PKG_RESOURCES_MODULES):
+            flags = legacy_pkg_resources_collect_args()
+            self.assertIn("setuptools", flags)
+            self.assertIn("pkg_resources", flags)
+            for module in LEGACY_PKG_RESOURCES_MODULES:
+                self.assertIn(module, flags)
+            validate_legacy_pkg_resources()
+        with patch("vela.cli.build._module_exists", return_value=False):
+            self.assertEqual(legacy_pkg_resources_collect_args(), [])
+            validate_legacy_pkg_resources()
+
+    def test_missing_jaraco_fails_before_build(self):
+        from vela.cli.build import validate_legacy_pkg_resources
+        with patch("vela.cli.build._module_exists",
+                   side_effect=lambda name: name == "pkg_resources"):
+            with self.assertRaisesRegex(RuntimeError, "jaraco.text"):
+                validate_legacy_pkg_resources()
+
+    def test_doctor_can_offer_jaraco_repair(self):
+        from vela.cli.build import LEGACY_PKG_RESOURCES_MODULES
+        missing = [Check("Build: " + name, "missing", "")
+                   for name in LEGACY_PKG_RESOURCES_MODULES]
+        packages = missing_pip_packages(missing)
+        self.assertIn("setuptools>=77,<82", packages)
+        self.assertIn("jaraco.text>=3.12", packages)
+        self.assertIn("more-itertools>=10", packages)
+        self.assertEqual(len(packages), len(set(packages)))
+
     def test_icon_must_exist(self):
         with self.assertRaises(FileNotFoundError):
             build_plan(self.root, BuildOptions(icon="missing.png"))

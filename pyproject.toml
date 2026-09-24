@@ -1,6 +1,6 @@
 [project]
 name = "vela-framework"
-version = "0.2.1"
+version = "0.2.2"
 description = "Framework Python para aplicações desktop com HTML, CSS, Tailwind e JS — sem navegador"
 readme = "README.md"
 license = "MPL-2.0"
@@ -66,7 +66,16 @@ linux = [
 
 qt6 = ["PyQt6>=6.8,<7", "PyQt6-WebEngine>=6.8,<7", "qtpy>=2.4,<3"]
 
-build = ["pyinstaller>=6.16,<7"]
+# O extra de build inclui dependencias do loader legado pkg_resources.
+# Sem estes pacotes o hook pyi_rth_pkgres pode quebrar antes do launcher.
+build = [
+    "pyinstaller>=6.16,<7",
+    "setuptools>=77,<82",
+    "jaraco.text>=3.12",
+    "jaraco.functools>=4",
+    "jaraco.context>=5",
+    "more-itertools>=10",
+]
 
 notifications = ["win10toast>=0.9; platform_system == 'Windows'"]
 

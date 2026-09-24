@@ -16,7 +16,8 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from vela.cli.build import backend_for
+from vela.cli.build import (backend_for, LEGACY_PKG_RESOURCES_MODULES,
+                            LEGACY_PKG_RESOURCES_PIP)
 
 
 @dataclass
@@ -52,6 +53,16 @@ def diagnose(root=None, backend="auto"):
         ok = _module_exists(package)
         checks.append(Check(name, "ok" if ok else "missing",
                             "Disponivel" if ok else "Nao instalado", hint))
+    # Detecta o mesmo problema de empacotamento jaraco antes da GUI de build.
+    # Bibliotecas jaraco instaladas no SO fora deste venv nao resolvem.
+    if _module_exists("pkg_resources"):
+        for module in LEGACY_PKG_RESOURCES_MODULES:
+            ok = _module_exists(module)
+            checks.append(Check(
+                "Build: " + module, "ok" if ok else "missing",
+                "Disponivel" if ok else "Ausente neste Python/venv",
+                "Instale os extras: python -m pip install 'vela-framework[build]'"
+            ))
     if gui in ("qt6", "qt5"):
         qt = "PyQt6" if gui == "qt6" else "PyQt5"
         webengine = qt + ".QtWebEngineWidgets"
@@ -93,6 +104,8 @@ def missing_pip_packages(checks):
         packages.append("waitress>=3,<4")
     if "PyInstaller" in names:
         packages.append("pyinstaller>=6.16,<7")
+    if any("Build: " + module in names for module in LEGACY_PKG_RESOURCES_MODULES):
+        packages.extend(LEGACY_PKG_RESOURCES_PIP)
     if "PyQt6" in names or "PyQt6.QtWebEngineWidgets" in names:
         packages.extend(["PyQt6>=6.8,<7", "PyQt6-WebEngine>=6.8,<7"])
     if "qtpy" in names:

@@ -144,3 +144,24 @@ compatibilidade entre as versões do Python e PyGObject. O Vela agora
 interrompe o build se a importação GTK falhar, sem criar um pacote
 sabidamente incompleto. **Reinstalar GTK no host não corrige um ZIP que já
 foi compilado sem os bindings.**
+
+
+## Erro no build: pkg_resources/extern exige jaraco
+
+Em ambientes Python com \`pkg_resources\`, o PyInstaller pode gerar um
+executavel que aborta no runtime hook \`pyi_rth_pkgres\` se
+\`jaraco.text\`, \`jaraco.context\`, \`jaraco.functools\` ou
+\`more_itertools\` nao forem empacotados. O Vela 0.2.2 acrescentou
+estas dependencias no extra \`[build]\` e as coleta explicitamente.
+
+~~~bash
+python -m pip install -U 'vela-framework[qt6,build]'
+python manage.py doctor --gui qt6
+python manage.py buildapp --gui qt6 --installer
+./dist/NOME-APP/NOME-APP --self-test
+~~~
+
+Atualizar pacotes do venv **nao modifica executaveis ja instalados**.
+Recompile e instale a nova versao. Se o projeto mantiver o framework
+fixado em \`requirements.txt\`, atualize o pin para um commit que inclua
+a correcao antes de reinstalar as dependencias.

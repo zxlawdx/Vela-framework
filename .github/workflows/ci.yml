@@ -55,6 +55,10 @@ jobs:
       - name: Build Linux app with Vela
         run: |
           cd smokeapp
+          # Reproduz o runtime hook pyi_rth_pkgres que anteriormente
+          # falhava ao carregar jaraco no executavel do ZTE Automatic.
+          python -c "import pkg_resources, jaraco.text, jaraco.functools, jaraco.context, more_itertools; print('legacy imports OK')"
+          printf '\\nimport pkg_resources  # regression test for pyi_rth_pkgres\\n' >> config/wsgi.py
           python manage.py doctor --gui qt6
           python manage.py buildapp --gui qt6 --installer
           test -f dist/Meu-App-Vela/Meu-App-Vela
@@ -103,7 +107,7 @@ jobs:
           ./venv/bin/vela startproject example
           test -f example/config/settings.py
           test -f example/apps/home/templates/home.html
-          ./venv/bin/python -c "import vela; assert vela.__version__ == '0.2.1'"
+          ./venv/bin/python -c "import vela; assert vela.__version__ == '0.2.2'"
           cd example
           ../venv/bin/python manage.py help | grep -F "init-process:instalation"
       - uses: actions/upload-artifact@v4
