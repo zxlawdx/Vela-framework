@@ -65,6 +65,89 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("gi", gtk["command"])
         self.assertIn("webview.platforms.gtk", gtk["command"])
 
+    def test_pkg_resources_collects_jaraco_only_when_needed(self):
+        from vela.cli.build import (LEGACY_PKG_RESOURCES_MODULES,
+                                    legacy_pkg_resources_collect_args,
+                                    validate_legacy_pkg_resources)
+        with patch("vela.cli.build._module_exists",
+                   side_effect=lambda name: name == "pkg_resources"
+                   or name in LEGACY_PKG_RESOURCES_MODULES):
+            flags = legacy_pkg_resources_collect_args()
+            self.assertIn("setuptools", flags)
+            self.assertIn("pkg_resources", flags)
+            for module in LEGACY_PKG_RESOURCES_MODULES:
+                self.assertIn(module, flags)
+            with patch("vela.cli.build.importlib.import_module",
+                       return_value=object()) as imported:
+                validate_legacy_pkg_resources()
+                imported.assert_called_with("pkg_resources")
+        with patch("vela.cli.build._module_exists", return_value=False):
+            self.assertEqual(legacy_pkg_resources_collect_args(), [])
+            validate_legacy_pkg_resources()
+
+    def test_venv_detection_uses_pyvenv_cfg(self):
+        from vela.cli.build import linux_venv_info
+        fake_venv = self.root / "venv"
+        fake_venv.mkdir()
+        cfg = fake_venv / "pyvenv.cfg"
+        with patch("vela.cli.build.sys.prefix", str(fake_venv)):
+            with patch("vela.cli.build.sys.base_prefix", "/usr"):
+                cfg.write_text("home = /usr/bin\ninclude-system-site-packages = true\n")
+                info = linux_venv_info()
+                self.assertTrue(info["active"])
+                self.assertTrue(info["system_site_packages"])
+                cfg.write_text("include-system-site-packages = false\n")
+                self.assertFalse(linux_venv_info()["system_site_packages"])
+
+    def test_qt_shared_venv_and_gtk_isolated_are_reported(self):
+        from vela.cli.build import gui_venv_messages
+        with patch("vela.cli.build.platform.system", return_value="Linux"):
+            with patch("vela.cli.build.linux_venv_info",
+                       return_value={"active": True,
+                                     "system_site_packages": True}):
+                self.assertIn("--system-site-packages",
+                              gui_venv_messages("qt6")[0])
+            with patch("vela.cli.build.linux_venv_info",
+                       return_value={"active": True,
+                                     "system_site_packages": False}):
+                with patch("vela.cli.build._module_exists", return_value=False):
+                    self.assertIn("--system-site-packages",
+                                  gui_venv_messages("gtk")[0])
+                with patch("vela.cli.build._module_exists", return_value=True):
+                    self.assertEqual(gui_venv_messages("gtk"), [])
+            with patch("vela.cli.build.linux_venv_info",
+                       return_value={"active": False,
+                                     "system_site_packages": False}):
+                self.assertEqual(gui_venv_messages("gtk"), [])
+
+    def test_conflicting_pkg_resources_is_rejected_before_build(self):
+        from vela.cli.build import (LEGACY_PKG_RESOURCES_MODULES,
+                                    validate_legacy_pkg_resources)
+        with patch("vela.cli.build._module_exists",
+                   side_effect=lambda name: name == "pkg_resources"
+                   or name in LEGACY_PKG_RESOURCES_MODULES):
+            with patch("vela.cli.build.importlib.import_module",
+                       side_effect=ImportError("broken global jaraco")):
+                with self.assertRaisesRegex(RuntimeError, "conflito"):
+                    validate_legacy_pkg_resources()
+
+    def test_missing_jaraco_fails_before_build(self):
+        from vela.cli.build import validate_legacy_pkg_resources
+        with patch("vela.cli.build._module_exists",
+                   side_effect=lambda name: name == "pkg_resources"):
+            with self.assertRaisesRegex(RuntimeError, "jaraco.text"):
+                validate_legacy_pkg_resources()
+
+    def test_doctor_can_offer_jaraco_repair(self):
+        from vela.cli.build import LEGACY_PKG_RESOURCES_MODULES
+        missing = [Check("Build: " + name, "missing", "")
+                   for name in LEGACY_PKG_RESOURCES_MODULES]
+        packages = missing_pip_packages(missing)
+        self.assertIn("setuptools>=77,<82", packages)
+        self.assertIn("jaraco.text>=3.12", packages)
+        self.assertIn("more-itertools>=10", packages)
+        self.assertEqual(len(packages), len(set(packages)))
+
     def test_icon_must_exist(self):
         with self.assertRaises(FileNotFoundError):
             build_plan(self.root, BuildOptions(icon="missing.png"))

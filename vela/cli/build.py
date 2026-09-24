@@ -26,6 +26,141 @@ class BuildOptions:
     plugins: bool = False
 
 
+# Setuptools anteriores a 82 ainda incluem pkg_resources, que usa um
+# carregador dinamico para os modulos jaraco e more_itertools. O PyInstaller
+# nem sempre encontra esses imports durante a analise estatica. Os pacotes
+# externos estao declarados no extra [build] e sao coletados explicitamente.
+LEGACY_PKG_RESOURCES_MODULES = (
+    "jaraco.text", "jaraco.functools", "jaraco.context", "more_itertools"
+)
+LEGACY_PKG_RESOURCES_PIP = (
+    "setuptools>=77,<82", "jaraco.text>=3.12", "jaraco.functools>=4",
+    "jaraco.context>=5", "more-itertools>=10"
+)
+
+
+def _module_exists(name):
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ModuleNotFoundError, ValueError):
+        return False
+
+
+def linux_venv_info():
+    """Detecta isolamento com pyvenv.cfg (o diretorio atual nao importa)."""
+    active = sys.prefix != getattr(sys, "base_prefix", sys.prefix)
+    config = Path(sys.prefix) / "pyvenv.cfg"
+    shared = False
+    if active and config.is_file():
+        for line in config.read_text(encoding="utf-8").splitlines():
+            key, sep, value = line.partition("=")
+            if sep and key.strip().lower() == "include-system-site-packages":
+                shared = value.strip().lower() == "true"
+                break
+    return {"active": active, "system_site_packages": shared,
+            "python": sys.executable, "prefix": sys.prefix,
+            "config": str(config) if config.is_file() else None}
+
+
+def module_is_local_to_venv(module):
+    """None = fora de venv, ausente ou modulo embutido."""
+    info = linux_venv_info()
+    if not info["active"]:
+        return None
+    try:
+        spec = importlib.util.find_spec(module)
+    except (ModuleNotFoundError, ValueError):
+        return None
+    if spec is None:
+        return None
+    origin = spec.origin or next(iter(spec.submodule_search_locations or []), None)
+    if not origin:
+        return None
+    try:
+        Path(origin).resolve().relative_to(Path(sys.prefix).resolve())
+    except ValueError:
+        return False
+    return True
+
+
+def gui_venv_messages(gui):
+    """Mensagens sem alterar automaticamente o ambiente do desenvolvedor."""
+    if platform.system() != "Linux":
+        return []
+    info = linux_venv_info()
+    if not info["active"]:
+        return []
+    if gui == "gtk" and not info["system_site_packages"] and not _module_exists("gi"):
+        return [
+            "GTK: este venv esta isolado e nao importa gi. "
+            "Instale python3-gi no SO e crie OUTRO venv usando "
+            "/usr/bin/python3 -m venv --system-site-packages .venv-gtk "
+            "(nao sobrescreva seu .venv atual), ou selecione --gui qt6."
+        ]
+    if gui in ("qt5", "qt6") and info["system_site_packages"]:
+        return [
+            "Qt: este venv usa --system-site-packages. Embora isso nao seja "
+            "erro por si so, pacotes globais de setuptools/jaraco podem "
+            "contaminar o PyInstaller. Prefira um venv ISOLADO para Qt "
+            "(python3 -m venv .venv-build) e instale as dependencias nele."
+        ]
+    return []
+
+
+def inherited_pkg_resources_warning():
+    """Localiza setuptools herdado, comum em venvs mistos no Linux."""
+    if platform.system() != "Linux":
+        return ""
+    info = linux_venv_info()
+    if not (info["active"] and info["system_site_packages"]):
+        return ""
+    if module_is_local_to_venv("pkg_resources") is False:
+        return (
+            "pkg_resources esta vindo do Python global em um venv "
+            "--system-site-packages. Instale os pacotes de build no proprio "
+            "venv; para Qt6, considere um ambiente isolado."
+        )
+    return ""
+
+
+def legacy_pkg_resources_collect_args():
+    """Colete dependencias de pkg_resources somente quando ele esta presente."""
+    if not _module_exists("pkg_resources"):
+        return []
+    packages = ("setuptools", "pkg_resources", *LEGACY_PKG_RESOURCES_MODULES)
+    return [arg for package in packages for arg in ("--collect-all", package)]
+
+
+def validate_legacy_pkg_resources():
+    """Falhe ANTES do PyInstaller se nao houver os modulos de import dinamico."""
+    if not _module_exists("pkg_resources"):
+        return
+    missing = [name for name in LEGACY_PKG_RESOURCES_MODULES
+               if not _module_exists(name)]
+    if missing:
+        raise RuntimeError(
+            "pkg_resources foi detectado, mas faltam modulos necessarios "
+            "para o executavel: " + ", ".join(missing) + ". "
+            "Instale no MESMO venv do build: "
+            "python -m pip install 'setuptools>=77,<82' "
+            "'jaraco.text>=3.12' 'jaraco.functools>=4' "
+            "'jaraco.context>=5' 'more-itertools>=10'. "
+            "Depois execute o build novamente."
+        )
+    # find_spec pode identificar modulos presentes em diretorios diferentes
+    # num venv --system-site-packages. O import real detecta incompatibilidades
+    # antes de rodar o hook pyi_rth_pkgres no binario final.
+    try:
+        importlib.import_module("pkg_resources")
+    except (ImportError, AttributeError) as exc:
+        raise RuntimeError(
+            "pkg_resources foi encontrado, mas nao importa corretamente "
+            "neste ambiente Python. Corrija o conflito de setuptools/jaraco "
+            "no venv ou use um venv isolado para Qt6. Detalhe: " + str(exc)
+        ) from exc
+
+
+
 def platform_id():
     return {"Windows": "windows", "Linux": "linux", "Darwin": "macos"}.get(
         platform.system(), platform.system().lower())
@@ -161,6 +296,10 @@ def build_plan(root, options):
         cmd += ["--collect-all", "gi", "--hidden-import", "webview.platforms.gtk",
                 "--hidden-import", "gi.repository.Gtk",
                 "--hidden-import", "gi.repository.WebKit2"]
+    # Inclui pkg_resources e os modulos jaraco caso este Python use
+    # o loader legado. A coleta do setuptools preserva tambem seus modulos
+    # vendorizados, enquanto os jaraco externos cobrem os imports dinamicos.
+    cmd += legacy_pkg_resources_collect_args()
     if icon_path:
         cmd += ["--icon", str(icon_path)]
     cmd.append(str(entry))
@@ -189,6 +328,11 @@ def build_app(root=None, options=None, notify=print):
         raise RuntimeError("PyInstaller ausente: pip install 'vela-framework[build]'")
     if plan["gui"] == "qt6" and importlib.util.find_spec("PyQt6") is None:
         raise RuntimeError("PyQt6 ausente: pip install 'vela-framework[qt6]'")
+    for warning in gui_venv_messages(plan["gui"]):
+        notify("AVISO: " + warning)
+    inherited = inherited_pkg_resources_warning()
+    if inherited:
+        notify("AVISO: " + inherited)
     if plan["gui"] == "qt5" and importlib.util.find_spec("PyQt5") is None:
         raise RuntimeError("PyQt5 ausente: instale PyQt5, PyQtWebEngine e qtpy")
 
@@ -220,6 +364,7 @@ def build_app(root=None, options=None, notify=print):
                 "Python compativel com python3-gi."
             ) from exc
 
+    validate_legacy_pkg_resources()
     from vela.cli.collectstatic import collect_static
     notify("Coletando estaticos...")
     if options.tailwind:
@@ -267,10 +412,16 @@ def build_app(root=None, options=None, notify=print):
         check = subprocess.run([str(binary), "--self-test"], cwd=bundle,
                                capture_output=True, text=True, timeout=50, check=True)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        details = getattr(exc, "stderr", "") or getattr(exc, "stdout", "")
+        details = "\n".join(str(item) for item in (
+            getattr(exc, "stdout", ""), getattr(exc, "stderr", "")) if item)
+        hint = (" Verifique o extra de build: python -m pip install "
+                "'setuptools>=77,<82' 'jaraco.text>=3.12' "
+                "'jaraco.functools>=4' 'jaraco.context>=5' "
+                "'more-itertools>=10'."
+                if "jaraco" in details or "pkg_resources" in details else "")
         raise RuntimeError(
-            "O executavel nao passou no teste interno de GUI; o ZIP nao "
-            "sera gerado. " + str(details)[-3500:]
+            "O executavel nao passou no teste interno de runtime; "
+            "o ZIP nao sera gerado." + hint + "\n" + details[-4500:]
         ) from exc
     notify(check.stdout.strip() or "Runtime grafico empacotado corretamente.")
 

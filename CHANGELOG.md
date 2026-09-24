@@ -1,5 +1,19 @@
 # Histórico de alterações
 
+## 0.2.2 — reparo do runtime PyInstaller / pkg_resources
+
+- O extra \`[build]\` instala dependencias legadas do carregador
+  \`pkg_resources\` (setuptools anterior a 82, jaraco e more-itertools).
+- \`buildapp\` detecta \`pkg_resources\` e inclui explicitamente suas
+  dependencias dinamicas no executavel congelado; falha antecipadamente
+  se o venv estiver incompleto.
+- O assistente \`doctor\` identifica os pacotes jaraco faltantes,
+  oferece a instalacao com consentimento e mostra erro de empacotamento
+  com orientacoes mais especificas.
+- CI passa a exercitar o runtime hook \`pyi_rth_pkgres\` com
+  \`pkg_resources\` importado no aplicativo de teste.
+
+
 ## 0.2.1 — correção de pacotes Linux congelados
 
 - Build aborta caso `gi` (GTK) ou `qtpy`/QtWebEngine (Qt) não estejam acessíveis no Python do desenvolvedor.

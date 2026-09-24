@@ -52,9 +52,19 @@ jobs:
         run: python -m pip install -e ".[qt6,build]"
       - name: Create sample Vela app
         run: vela startproject smokeapp
+      - name: Verify virtualenv detection with real Linux interpreters
+        run: |
+          python -m venv /tmp/vela-isolated
+          python -m venv --system-site-packages /tmp/vela-shared
+          /tmp/vela-isolated/bin/python -c "from vela.cli.build import linux_venv_info; x=linux_venv_info(); assert x['active'] and not x['system_site_packages'], x"
+          /tmp/vela-shared/bin/python -c "from vela.cli.build import linux_venv_info; x=linux_venv_info(); assert x['active'] and x['system_site_packages'], x"
       - name: Build Linux app with Vela
         run: |
           cd smokeapp
+          # Reproduz o runtime hook pyi_rth_pkgres que anteriormente
+          # falhava ao carregar jaraco no executavel do ZTE Automatic.
+          python -c "import pkg_resources, jaraco.text, jaraco.functools, jaraco.context, more_itertools; print('legacy imports OK')"
+          printf '\nimport pkg_resources  # regression test for pyi_rth_pkgres\n' >> config/wsgi.py
           python manage.py doctor --gui qt6
           python manage.py buildapp --gui qt6 --installer
           test -f dist/Meu-App-Vela/Meu-App-Vela
@@ -103,7 +113,7 @@ jobs:
           ./venv/bin/vela startproject example
           test -f example/config/settings.py
           test -f example/apps/home/templates/home.html
-          ./venv/bin/python -c "import vela; assert vela.__version__ == '0.2.1'"
+          ./venv/bin/python -c "import vela; assert vela.__version__ == '0.2.2'"
           cd example
           ../venv/bin/python manage.py help | grep -F "init-process:instalation"
       - uses: actions/upload-artifact@v4

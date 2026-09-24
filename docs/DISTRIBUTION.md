@@ -144,3 +144,47 @@ compatibilidade entre as versões do Python e PyGObject. O Vela agora
 interrompe o build se a importação GTK falhar, sem criar um pacote
 sabidamente incompleto. **Reinstalar GTK no host não corrige um ZIP que já
 foi compilado sem os bindings.**
+
+
+## Erro no build: pkg_resources/extern exige jaraco
+
+Em ambientes Python com \`pkg_resources\`, o PyInstaller pode gerar um
+executavel que aborta no runtime hook \`pyi_rth_pkgres\` se
+\`jaraco.text\`, \`jaraco.context\`, \`jaraco.functools\` ou
+\`more_itertools\` nao forem empacotados. O Vela 0.2.2 acrescentou
+estas dependencias no extra \`[build]\` e as coleta explicitamente.
+
+~~~bash
+python -m pip install -U 'vela-framework[qt6,build]'
+python manage.py doctor --gui qt6
+python manage.py buildapp --gui qt6 --installer
+./dist/NOME-APP/NOME-APP --self-test
+~~~
+
+Atualizar pacotes do venv **nao modifica executaveis ja instalados**.
+Recompile e instale a nova versao. Se o projeto mantiver o framework
+fixado em \`requirements.txt\`, atualize o pin para um commit que inclua
+a correcao antes de reinstalar as dependencias.
+
+
+### Verificacao automatica do virtualenv Linux
+
+O \`python manage.py doctor --gui qt6\` identifica se o Python atual
+esta num venv isolado ou criado com \`--system-site-packages\` lendo
+\`pyvenv.cfg\`. Ele avisa sobre misturas de setuptools/jaraco do SO
+que podem causar falhas no runtime hook do PyInstaller.
+
+**Qt6:** prefira \`python3 -m venv .venv-build\` (isolado);
+instale \`pip install 'vela-framework[qt6,build]'\` e dependencias
+proprias do projeto nesse ambiente.
+
+**GTK:** se o \`gi\` vem dos pacotes \`python3-gi\` do Linux,
+o ambiente isolado normalmente nao o enxerga. Neste caso, instale
+os pacotes do SO e crie um ambiente SEPARADO com
+\`/usr/bin/python3 -m venv --system-site-packages .venv-gtk\`.
+Nao mude o \`pyvenv.cfg\` manualmente nem destrua o venv em uso.
+Se PyGObject ja foi instalado no proprio venv e o GTK realmente
+importa, \`--system-site-packages\` nao e necessario.
+
+O teste de disponibilidade dos bindings ocorre antes do build;
+estes avisos por si so nao bloqueiam compilacoes validas.
