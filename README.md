@@ -1,3 +1,12 @@
+> **Vela 0.2.0 (prévia)**: o framework agora inclui
+> [assistente gráfico Next/Next](docs/DISTRIBUTION.md),
+> [compilação nativa e instalação](docs/DISTRIBUTION.md),
+> [API OpenAPI/Waitress](docs/API.md) e
+> [serviços desktop](docs/RUNTIME.md).
+> Execute `python manage.py init-process:instalation` na raiz do projeto;
+> também estão disponíveis `buildapp`, `doctor`, `installapp` e
+> `makeworkflow`. Consulte o [changelog](CHANGELOG.md) para limitações.
+
 <div align="center">
 
 <svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">

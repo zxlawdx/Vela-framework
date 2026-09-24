@@ -48,6 +48,8 @@ class BaseBridge:
     def __init__(self, router=None, config: dict = None):
         self.router = router
         self.logger = VelaLogger("Bridge")
+        from vela.events import EventBus
+        self.events = EventBus()
 
         # Config padrão — o dev pode sobrescrever via VelaApp(config={...})
         self.config = config or {
@@ -95,7 +97,8 @@ class BaseBridge:
             }
         """
         # Hot reload dos módulos da aplicação (não do framework)
-        self._reload_app_modules()
+        if self.config.get('debug', False):
+            self._reload_app_modules()
 
         try:
             parsed_params = json.loads(params)
@@ -170,6 +173,13 @@ class BaseBridge:
             self.logger.warning(f"[JS] {message}")
         elif level == "error":
             self.logger.error(f"[JS] {message}")
+
+    def _attach_window(self, window):
+        self.events.attach_window(window)
+
+    def emit(self, name, payload=None):
+        """Python -> frontend: window.addEventListener('vela:event', handler)."""
+        return self.events.emit(name, payload)
 
     # ─── Internal ─────────────────────────────────────────────────────────
 

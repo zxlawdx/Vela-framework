@@ -5,6 +5,10 @@ class ApiRouter:
     def add_route(self, method, path, handler):
         print(f"[API REGISTER] {method} {path}")
 
+        for item in self.routes:
+            if item["method"] == method and item["path"] == path:
+                item["handler"] = handler
+                return
         self.routes.append({
             "method": method,
             "path": path,

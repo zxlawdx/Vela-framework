@@ -63,7 +63,7 @@ module.exports = {
   content: [
     "./apps/**/templates/**/*.html",
     "./apps/**/static/**/*.js",
-    "./vela/core/shell.html",
+    "./.vela-build/framework-shell.html",
     "./templates/**/*.html",
   ],
   theme: {
@@ -156,7 +156,7 @@ def _ensure_tailwind_cli(project_root: str, verbose: bool) -> bool:
 
     try:
         result = subprocess.run(
-            ["npm", "install", "--save-dev", "tailwindcss"],
+            ["npm", "install", "--save-dev", "tailwindcss@3.4.17"],
             cwd=project_root,
             capture_output=True,
             text=True,

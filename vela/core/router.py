@@ -65,7 +65,8 @@ class Route:
 
     def render(self, params: dict = None, router=None) -> str:
         module = importlib.import_module(self._module_name)
-        importlib.reload(module)
+        if router is not None and getattr(router, 'debug', False):
+            module = importlib.reload(module)
         handler = getattr(module, self._func_name)
 
         context = params or {}
@@ -114,6 +115,7 @@ class Router:
         self.logger = VelaLogger("Router")
         # Base URL para gerar URLs de static em modo http
         self.base_url: str = None
+        self.debug: bool = False
 
     # ─── Registro ────────────────────────────────────────────────────────
 

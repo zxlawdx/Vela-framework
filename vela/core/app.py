@@ -5,6 +5,7 @@ Classe principal do framework Vela.
 """
 
 import importlib
+import os
 
 from vela.api import api
 from vela.core.api_server import ApiServer
@@ -33,6 +34,7 @@ class VelaApp:
 
         self._settings = self._load_settings(settings_module)
         self._config = self._build_config(title=title, layout=layout)
+        self.router.debug = self._config['debug']
 
         bridge_cls = bridge_class or BaseBridge
         self.bridge = bridge_cls(
@@ -77,6 +79,7 @@ class VelaApp:
 
         config = {
             "title": "Vela App",
+            "icon": "",
 
             "layout": {
                 "sidebar": True,
@@ -100,6 +103,9 @@ class VelaApp:
                 # Se a porta configurada estiver ocupada, o Vela pede
                 # automaticamente ao SO outra porta TCP livre.
                 "auto_port": True,
+                "server": "waitress",
+                "workers": 4,
+                "docs_enabled": True,
             },
 
             # Modo de carregamento do shell: "http" (recomendado) ou "file" (legado)
@@ -110,6 +116,8 @@ class VelaApp:
         if s:
             if hasattr(s, "APP_TITLE"):
                 config["title"] = s.APP_TITLE
+            if hasattr(s, "APP_ICON"):
+                config["icon"] = s.APP_ICON
 
             if hasattr(s, "ENTRY_ROUTE"):
                 config["entry_route"] = s.ENTRY_ROUTE
@@ -140,6 +148,11 @@ class VelaApp:
 
         if layout:
             config["layout"].update(layout)
+
+        # Builds congelados nao devem executar hot reload ou abrir DevTools,
+        # ainda que o projeto tenha DEBUG=True durante desenvolvimento.
+        if os.environ.get("VELA_PRODUCTION") == "1":
+            config["debug"] = False
 
         return config
 
@@ -213,6 +226,9 @@ class VelaApp:
                 debug=c["debug"],
                 static_root=c.get("static_root", "staticfiles"),
                 auto_port=c["api"].get("auto_port", True),
+                server=c["api"].get("server", "waitress"),
+                docs_enabled=c["api"].get("docs_enabled", True),
+                workers=c["api"].get("workers", 4),
             )
 
             # A porta efetiva pode ser diferente da porta configurada.
@@ -263,6 +279,7 @@ class VelaApp:
             host=c["api"]["host"],
             port=c["api"]["port"],
             shell_mode=c.get("shell_mode", "http"),
+            icon=c.get("icon", ""),
         )
 
         window.run()

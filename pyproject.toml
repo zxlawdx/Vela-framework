@@ -1,6 +1,6 @@
 [project]
 name = "vela-framework"
-version = "0.1.1"
+version = "0.2.0"
 description = "Framework Python para aplicações desktop com HTML, CSS, Tailwind e JS — sem navegador"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -21,6 +21,7 @@ dependencies = [
 
     # Servidor HTTP interno usado pelo Vela para servir assets locais
     "bottle==0.13.4",
+    "waitress>=3.0,<4",
 
     # Utilitário de proxy para funções Python expostas ao JS
     "proxy_tools==0.1.0",
@@ -44,6 +45,12 @@ linux = [
     "pycairo>=1.20.0",
     "PyGObject>=3.42.0",
 ]
+
+qt6 = ["PyQt6>=6.8,<7", "PyQt6-WebEngine>=6.8,<7", "qtpy>=2.4,<3"]
+
+build = ["pyinstaller>=6.16,<7"]
+
+notifications = ["win10toast>=0.9; platform_system == 'Windows'"]
 
 dev = [
     "pytest>=7.0",
