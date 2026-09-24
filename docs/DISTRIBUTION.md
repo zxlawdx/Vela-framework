@@ -107,3 +107,11 @@ reexecuta o próprio binário congelado com `--vela-install --scope=system`
 através do Polkit. Se executado a partir do ambiente de desenvolvimento,
 utiliza `python -m vela.cli.install`. Assim, nenhum processo precisa
 coletar a senha administrativa por conta própria.
+
+### Modo de produção automático
+
+Todo launcher criado pelo `buildapp` define `VELA_PRODUCTION=1`.
+O Vela ignora `DEBUG=True` do projeto durante a execução congelada para
+evitar hot reload, habilitação acidental de DevTools e sobrecarga de
+navegação. O desenvolvedor pode continuar com `DEBUG=True` em `runapp`
+para iterar normalmente.

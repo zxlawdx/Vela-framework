@@ -5,6 +5,7 @@ Classe principal do framework Vela.
 """
 
 import importlib
+import os
 
 from vela.api import api
 from vela.core.api_server import ApiServer
@@ -147,6 +148,11 @@ class VelaApp:
 
         if layout:
             config["layout"].update(layout)
+
+        # Builds congelados nao devem executar hot reload ou abrir DevTools,
+        # ainda que o projeto tenha DEBUG=True durante desenvolvimento.
+        if os.environ.get("VELA_PRODUCTION") == "1":
+            config["debug"] = False
 
         return config
 

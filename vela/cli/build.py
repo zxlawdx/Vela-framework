@@ -65,6 +65,7 @@ def launcher_source(gui):
         '"""Entry point gerado pelo Vela. Nao editar manualmente."""\n'
         'import os, sys\n'
         'import multiprocessing; multiprocessing.freeze_support()\n'
+        'os.environ.setdefault("VELA_PRODUCTION", "1")\n'
         'from pathlib import Path\n'
         f'GUI = {gui!r}\n'
         'if GUI == "gtk":\n'

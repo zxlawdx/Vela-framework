@@ -114,6 +114,14 @@ class ApiFeatures(unittest.TestCase):
             page = router.resolve("/home")
         self.assertIn("OK", page["html"])
 
+    def test_frozen_production_mode_disables_dev_reload(self):
+        from vela.core.app import VelaApp
+        with patch.dict("os.environ", {"VELA_PRODUCTION": "1"}):
+            app = VelaApp(enable_api=False)
+        self.assertFalse(app._config["debug"])
+        self.assertFalse(app.router.debug)
+        self.assertFalse(app.bridge.config["debug"])
+
     def test_bridge_does_not_reload_production_modules(self):
         router = Router()
         router.add("/home", view)
