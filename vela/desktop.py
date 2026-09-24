@@ -43,7 +43,8 @@ def check_for_updates(repo, current_version, *, timeout=5):
 
     Nao instala nem executa releases automaticamente. O usuario decide.
     """
-    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
+    if (not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo)
+            or any(part in (".", "..") for part in repo.split("/"))):
         raise ValueError("Repositorio invalido; esperado: owner/repo")
     url = f"https://api.github.com/repos/{repo}/releases/latest"
     request = Request(url, headers={"Accept": "application/vnd.github+json",
