@@ -3,9 +3,9 @@
 > [compilação nativa e instalação](docs/DISTRIBUTION.md),
 > [API OpenAPI/Waitress](docs/API.md) e
 > [serviços desktop](docs/RUNTIME.md).
-> Execute \`python manage.py init-process:instalation\` na raiz do projeto;
-> também estão disponíveis \`buildapp\`, \`doctor\`, \`installapp\` e
-> \`makeworkflow\`. Consulte o [changelog](CHANGELOG.md) para limitações.
+> Execute `python manage.py init-process:instalation` na raiz do projeto;
+> também estão disponíveis `buildapp`, `doctor`, `installapp` e
+> `makeworkflow`. Consulte o [changelog](CHANGELOG.md) para limitações.
 
 <div align="center">
 
