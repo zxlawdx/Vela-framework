@@ -3,6 +3,30 @@ name = "vela-framework"
 version = "0.2.1"
 description = "Framework Python para aplicações desktop com HTML, CSS, Tailwind e JS — sem navegador"
 readme = "README.md"
+license = "MPL-2.0"
+license-files = ["LICENSE", "NOTICE.md"]
+authors = [{name = "Marinaldo da Costa Barroso Filho"}]
+maintainers = [{name = "Marinaldo da Costa Barroso Filho"}]
+keywords = ["desktop", "framework", "pywebview", "html", "css", "javascript", "gui"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+
+[project.urls]
+Homepage = "https://github.com/zxlawdx/Vela-framework"
+Repository = "https://github.com/zxlawdx/Vela-framework"
+Documentation = "https://github.com/zxlawdx/Vela-framework/tree/main/docs"
+Issues = "https://github.com/zxlawdx/Vela-framework/issues"
+Changelog = "https://github.com/zxlawdx/Vela-framework/blob/main/CHANGELOG.md"
 requires-python = ">=3.10"
 
 # ─── Dependências instaladas automaticamente pelo pip ────────────────────────
@@ -85,7 +109,7 @@ vela = [
 # ─── Build system ─────────────────────────────────────────────────────────────
 
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77.0.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
 # ─── Ferramentas ──────────────────────────────────────────────────────────────

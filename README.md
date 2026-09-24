@@ -67,7 +67,7 @@
 
 <br/>
 
-[![License](https://img.shields.io/badge/license-MIT-f59e0b?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/license-MPL--2.0-f59e0b?style=flat-square)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/zxlawdx/Vela-framework?style=flat-square&color=f59e0b)](https://github.com/zxlawdx/Vela-framework/stargazers)
 [![Issues](https://img.shields.io/github/issues/zxlawdx/Vela-framework?style=flat-square&color=ef4444)](https://github.com/zxlawdx/Vela-framework/issues)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](https://github.com/zxlawdx/Vela-framework/pulls)
@@ -896,3 +896,19 @@ Feito com ☕ e Python
 [![GitHub](https://img.shields.io/badge/GitHub-zxlawdx-181717?style=flat-square&logo=github)](https://github.com/zxlawdx/Vela-framework)
 
 </div>
+
+
+## Licença e autoria
+
+Vela Framework está sob a **Mozilla Public License 2.0 (MPL-2.0)**.
+Consulte [LICENSE](LICENSE), [NOTICE.md](NOTICE.md) e a
+[documentação de licença e citação](docs/LICENSE_AND_CITATION.md).
+
+Criador do projeto: **Marinaldo da Costa Barroso Filho**.
+Para citações acadêmicas, utilize o botão **Cite this repository**,
+configurado em [CITATION.cff](CITATION.cff).
+
+A MPL exige a preservação dos avisos de autoria dos respectivos titulares,
+mas não obriga aplicativos criados com Vela a exibir créditos na interface.
+Código copiado dos templates do projeto pode ter obrigações próprias de
+redistribuição: veja o guia antes de distribuir aplicações proprietárias.
