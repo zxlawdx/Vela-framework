@@ -99,3 +99,11 @@ São incluídos `apps/`, `config/`, `staticfiles/` e, se existir,
 `assets/`. Dados do usuário, credenciais, caches e bancos pessoais
 **não devem ser embutidos no executável**. Persistência fica em diretório
 próprio via `vela.database.SQLiteStore`.
+
+### Instalação global a partir do executável
+
+Se o desenvolvedor escolher **todos os usuários**, o instalador Linux
+reexecuta o próprio binário congelado com `--vela-install --scope=system`
+através do Polkit. Se executado a partir do ambiente de desenvolvimento,
+utiliza `python -m vela.cli.install`. Assim, nenhum processo precisa
+coletar a senha administrativa por conta própria.

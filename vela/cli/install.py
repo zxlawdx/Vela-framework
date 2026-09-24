@@ -92,8 +92,13 @@ def _elevate_linux(bundle):
     if not pkexec:
         raise RuntimeError("pkexec nao encontrado. Instale polkit para instalacao global.")
     # Polkit exibe o dialogo de elevacao nativo; nenhuma senha passa pelo Vela.
-    cmd = [pkexec, sys.executable, "-m", "vela.cli.install",
-           "--bundle", str(Path(bundle).resolve()), "--scope", "system"]
+    if getattr(sys, "frozen", False):
+        # O executavel PyInstaller nao interpreta "python -m".
+        # Reexecuta o proprio binario, que entende --vela-install.
+        cmd = [pkexec, sys.executable, "--vela-install", "--scope=system"]
+    else:
+        cmd = [pkexec, sys.executable, "-m", "vela.cli.install",
+               "--bundle", str(Path(bundle).resolve()), "--scope", "system"]
     subprocess.run(cmd, check=True)
 
 

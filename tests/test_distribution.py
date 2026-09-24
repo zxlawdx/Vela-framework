@@ -44,6 +44,8 @@ class DistributionTests(unittest.TestCase):
         compile(s, "__vela_launcher__.py", "exec")
         self.assertIn("QT_XCB_GL_INTEGRATION", s)
         self.assertIn("--vela-install", s)
+        self.assertIn('scope = "system" if "--scope=system" in sys.argv', s)
+        self.assertIn('"--vela-install" not in sys.argv', s)
         self.assertIn('PYWEBVIEW_GUI', launcher_source("gtk"))
         self.assertNotIn("sudo", s)
 
@@ -82,6 +84,28 @@ class DistributionTests(unittest.TestCase):
                 uninstall_app("Teste-Vela")
                 self.assertFalse(target.exists())
                 self.assertFalse(desktop.exists())
+
+    def test_frozen_elevation_relaunches_executable_instead_of_python_m(self):
+        from vela.cli.install import _elevate_linux
+        with patch("vela.cli.install.shutil.which", return_value="/usr/bin/pkexec"):
+            with patch("vela.cli.install.sys.frozen", True, create=True):
+                with patch("vela.cli.install.subprocess.run") as run:
+                    _elevate_linux(self.root / "bundle")
+                    command = run.call_args.args[0]
+                    self.assertEqual(command[0], "/usr/bin/pkexec")
+                    self.assertEqual(command[1:],
+                                     [__import__("sys").executable, "--vela-install",
+                                      "--scope=system"])
+
+    def test_source_elevation_uses_python_module(self):
+        from vela.cli.install import _elevate_linux
+        with patch("vela.cli.install.shutil.which", return_value="/usr/bin/pkexec"):
+            with patch("vela.cli.install.sys.frozen", False, create=True):
+                with patch("vela.cli.install.subprocess.run") as run:
+                    _elevate_linux(self.root)
+                    command = run.call_args.args[0]
+                    self.assertEqual(command[2:4], ["-m", "vela.cli.install"])
+                    self.assertIn("--bundle", command)
 
     def test_installer_rejects_path_traversal(self):
         from vela.cli.install import safe_slug
