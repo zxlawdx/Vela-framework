@@ -6,6 +6,11 @@ Configurações globais da aplicação Vela.
 # ─── App ──────────────────────────────────────────────────────────────────────
 
 APP_TITLE = "Meu App Vela"
+APP_VERSION = "0.2.0"
+APP_ICON = ""
+APP_AUTHOR = ""
+APP_DESCRIPTION = ""
+APP_FILE_EXTENSIONS = []
 
 # Rota inicial ao abrir o app
 ENTRY_ROUTE = "/home"
@@ -34,6 +39,9 @@ API = {
     "host": "127.0.0.1",
     "port": 8000,
     "auto_port": True,
+    "server": "waitress",
+    "workers": 4,
+    "docs_enabled": True,
 }
 
 # ─── Desenvolvimento ──────────────────────────────────────────────────────────

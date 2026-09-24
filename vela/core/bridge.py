@@ -95,7 +95,8 @@ class BaseBridge:
             }
         """
         # Hot reload dos módulos da aplicação (não do framework)
-        self._reload_app_modules()
+        if self.config.get('debug', False):
+            self._reload_app_modules()
 
         try:
             parsed_params = json.loads(params)

@@ -33,6 +33,7 @@ class VelaApp:
 
         self._settings = self._load_settings(settings_module)
         self._config = self._build_config(title=title, layout=layout)
+        self.router.debug = self._config['debug']
 
         bridge_cls = bridge_class or BaseBridge
         self.bridge = bridge_cls(
@@ -100,6 +101,9 @@ class VelaApp:
                 # Se a porta configurada estiver ocupada, o Vela pede
                 # automaticamente ao SO outra porta TCP livre.
                 "auto_port": True,
+                "server": "waitress",
+                "workers": 4,
+                "docs_enabled": True,
             },
 
             # Modo de carregamento do shell: "http" (recomendado) ou "file" (legado)
@@ -213,6 +217,9 @@ class VelaApp:
                 debug=c["debug"],
                 static_root=c.get("static_root", "staticfiles"),
                 auto_port=c["api"].get("auto_port", True),
+                server=c["api"].get("server", "waitress"),
+                docs_enabled=c["api"].get("docs_enabled", True),
+                workers=c["api"].get("workers", 4),
             )
 
             # A porta efetiva pode ser diferente da porta configurada.

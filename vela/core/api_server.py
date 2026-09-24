@@ -1,6 +1,7 @@
 from bottle import Bottle, request, response, run, static_file
 from threading import Thread
 from pathlib import Path
+from vela.core.api_docs import build_openapi, DOCS_HTML
 import inspect
 import json
 import socket
@@ -19,8 +20,15 @@ class ApiServer:
         debug=False,
         static_root="staticfiles",
         auto_port=True,
+        server='waitress',
+        docs_enabled=True,
+        workers=4,
     ):
         self.api_router = api_router
+        self.server = server
+        self.docs_enabled = docs_enabled
+        self.workers = max(1, int(workers))
+        self.started_at = time.monotonic()
         self.host = host
 
         # Guarda a porta solicitada e resolve a porta efetiva antes
@@ -123,6 +131,24 @@ class ApiServer:
             ) from exc
 
     def _register_internal_routes(self):
+        @self.app.get(self.prefix + "/health")
+        def health():
+            response.content_type = "application/json"
+            return json.dumps({"ok": True, "uptime_seconds": round(time.monotonic() - self.started_at, 2)})
+
+        @self.app.get(self.prefix + "/openapi.json")
+        def openapi():
+            response.content_type = "application/json"
+            return json.dumps(build_openapi(self.api_router.routes, prefix=self.prefix),
+                              ensure_ascii=False)
+
+        if self.docs_enabled:
+            @self.app.get(self.prefix + "/docs")
+            def docs():
+                response.content_type = "text/html; charset=utf-8"
+                return DOCS_HTML.replace("__VELA_OPENAPI_PATH__",
+                                         self.prefix + "/openapi.json")
+
         @self.app.get("/__vela__/shell")
         def serve_shell():
             return static_file(
@@ -205,7 +231,13 @@ class ApiServer:
             self._register_debug_routes()
 
     def _wrap_handler(self, handler):
+        # Metadados do handler sao calculados uma vez por rota.
+        params = inspect.signature(handler).parameters
+        argument = "context" if "context" in params else "data" if "data" in params else None
+        annotation = params[argument].annotation if argument else inspect.Signature.empty
+
         def wrapper():
+            t0 = time.perf_counter()
             data = request.json or {}
 
             context = {
@@ -217,16 +249,19 @@ class ApiServer:
                 "path": request.path,
             }
 
-            params = inspect.signature(handler).parameters
-
-            if "context" in params:
+            if argument == "context":
                 result = handler(context)
-
-            elif "data" in params:
-                result = handler(data)
-
+            elif argument == "data":
+                if hasattr(annotation, "model_validate"):
+                    result = handler(annotation.model_validate(data))
+                else:
+                    result = handler(data)
             else:
                 result = handler()
+
+            if self.debug:
+                elapsed = (time.perf_counter() - t0) * 1000
+                print(f"[VELA PERF] {request.method} {request.path}: {elapsed:.1f} ms")
 
             if hasattr(result, "status_code"):
                 return result
@@ -566,14 +601,16 @@ class ApiServer:
     def start(self):
         self.register_routes()
 
-        thread = Thread(
-            target=lambda: run(
-                app=self.app,
-                host=self.host,
-                port=self.port,
-                quiet=True,
-            ),
-            daemon=True,
-        )
+        def serve():
+            if self.server == "waitress":
+                from waitress import serve as waitress_serve
+                waitress_serve(self.app, host=self.host, port=self.port,
+                               threads=self.workers)
+            elif self.server == "bottle":
+                run(app=self.app, host=self.host, port=self.port, quiet=True)
+            else:
+                raise ValueError(f"Servidor desconhecido: {self.server}")
+
+        thread = Thread(target=serve, daemon=True)
 
         thread.start()
