@@ -151,10 +151,23 @@ class ApiServer:
 
         @self.app.get("/__vela__/shell")
         def serve_shell():
-            return static_file(
-                "shell.html",
-                root=str(CORE_DIR)
-            )
+            # Em builds offline, usa CSS ja compilado no lugar da CDN.
+            css = Path.cwd() / self.static_root / "css" / "vela.bundle.css"
+            if css.is_file():
+                import re
+                content = (CORE_DIR / "shell.html").read_text(encoding="utf-8")
+                content = content.replace(
+                    '<script src="https://cdn.tailwindcss.com"></script>',
+                    '<link rel="stylesheet" href="/__vela__/static/css/vela.bundle.css">')
+                content = re.sub(
+                    r"<script>\s*tailwind\.config\s*=.*?</script>", "",
+                    content, flags=re.DOTALL, count=1)
+                content = re.sub(
+                    r"^\s*<link[^>]+(?:fonts\.googleapis|fonts\.gstatic)[^>]*>\s*$",
+                    "", content, flags=re.MULTILINE)
+                response.content_type = "text/html; charset=utf-8"
+                return content
+            return static_file("shell.html", root=str(CORE_DIR))
 
         @self.app.get("/__vela__/static/<filepath:path>")
         def serve_static(filepath):

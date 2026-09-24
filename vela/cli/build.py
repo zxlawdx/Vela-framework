@@ -167,9 +167,18 @@ def build_app(root=None, options=None, notify=print):
         raise RuntimeError("PyQt5 ausente: instale PyQt5, PyQtWebEngine e qtpy")
     from vela.cli.collectstatic import collect_static
     notify("Coletando estaticos...")
-    collect_static(apps_dir=str(plan["root"] / "apps"),
-                   output_dir=str(plan["root"] / "staticfiles"),
-                   verbose=False, skip_tailwind=not options.tailwind)
+    if options.tailwind:
+        from vela.core.api_server import CORE_DIR
+        (plan["root"] / ".vela-build").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(CORE_DIR / "shell.html",
+                     plan["root"] / ".vela-build/framework-shell.html")
+    report = collect_static(apps_dir=str(plan["root"] / "apps"),
+                            output_dir=str(plan["root"] / "staticfiles"),
+                            verbose=False, skip_tailwind=not options.tailwind)
+    if report["errors"]:
+        raise RuntimeError("Falha ao copiar arquivos estaticos")
+    if options.tailwind and not report["tailwind_bundle"]:
+        raise RuntimeError("Tailwind offline nao foi compilado. Verifique Node.js, npm e Tailwind CLI.")
     plan["entry"].parent.mkdir(parents=True, exist_ok=True)
     plan["entry"].write_text(launcher_source(plan["gui"]), encoding="utf-8")
     if options.plugins:

@@ -43,6 +43,7 @@ def launch_wizard(root=None):
             self.gui = tk.StringVar(value="auto")
             self.icon = tk.StringVar(value=str(getattr(self.settings, "APP_ICON", "")))
             self.want_installer = tk.BooleanVar(value=True)
+            self.want_tailwind = tk.BooleanVar(value=False)
             self.scope = tk.StringVar(value="user")
             self.status = tk.StringVar(value="Pronto")
             self.steps = [
@@ -125,6 +126,8 @@ def launch_wizard(root=None):
                     side="left", padx=8)
                 ttk.Checkbutton(self.content, text="Gerar scripts de instalação no ZIP",
                                 variable=self.want_installer).pack(anchor="w", pady=12)
+                ttk.Checkbutton(self.content, text="Compilar CSS offline com Tailwind (requer Node.js)",
+                                variable=self.want_tailwind).pack(anchor="w", pady=6)
                 self.label("Instalar depois do build:")
                 ttk.Radiobutton(self.content, text="Somente para meu usuário (recomendado)",
                                 variable=self.scope, value="user").pack(anchor="w", pady=4)
@@ -267,7 +270,8 @@ def launch_wizard(root=None):
             self.compile_btn.config(state="disabled")
             options = BuildOptions(
                 gui=self.gui.get(), icon=self.icon.get(),
-                installer=self.want_installer.get())
+                installer=self.want_installer.get(),
+                tailwind=self.want_tailwind.get())
             self.run_worker(lambda: build_app(self.project, options, notify=self.log))
 
         def install(self):
