@@ -2,7 +2,7 @@ name: Vela CI and Linux build smoke
 
 on:
   push:
-    branches: [main, "feature/**"]
+    branches: [main, "feature/**", "fix/**"]
   pull_request:
   workflow_dispatch:
 

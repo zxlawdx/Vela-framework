@@ -115,3 +115,32 @@ O Vela ignora `DEBUG=True` do projeto durante a execução congelada para
 evitar hot reload, habilitação acidental de DevTools e sobrecarga de
 navegação. O desenvolvedor pode continuar com `DEBUG=True` em `runapp`
 para iterar normalmente.
+
+## Erro após a instalação: GTK / QtPy não encontrados no executável
+
+O GTK do sistema operacional **não garante que o pacote PyInstaller contenha
+`gi`**. Da mesma forma, ter PyQt6 no Python de build não assegura que o
+executável inclua `qtpy`. A partir da versão 0.2.1, `buildapp` verifica
+as extensões GUI do backend escolhido **antes e depois** de congelar o app,
+executando o próprio executável com `--self-test` antes de gerar ZIP.
+O Vela também solicita explicitamente a GUI selecionada ao pywebview.
+
+No Linux Mint, recomenda-se começar por Qt6, especialmente dentro de venv:
+
+~~~bash
+python -m pip install -U 'vela-framework[qt6,build]'
+python manage.py doctor --gui qt6
+python manage.py buildapp --gui qt6 --installer
+./dist/SEU-APP/SEU-APP --self-test
+python manage.py installapp
+~~~
+
+Para quem **escolhe GTK**, use um interpretador Python que consiga importar
+`gi`, `gi.repository.Gtk` e `gi.repository.WebKit2` no MESMO ambiente em
+que o PyInstaller executa. Quando forem fornecidos por pacotes do sistema,
+isso pode exigir `python3-gi` e um virtualenv criado com
+`/usr/bin/python3 -m venv --system-site-packages .venv`; isso depende da
+compatibilidade entre as versões do Python e PyGObject. O Vela agora
+interrompe o build se a importação GTK falhar, sem criar um pacote
+sabidamente incompleto. **Reinstalar GTK no host não corrige um ZIP que já
+foi compilado sem os bindings.**
