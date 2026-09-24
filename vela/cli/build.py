@@ -64,6 +64,7 @@ def launcher_source(gui):
     return (
         '"""Entry point gerado pelo Vela. Nao editar manualmente."""\n'
         'import os, sys\n'
+        'import multiprocessing; multiprocessing.freeze_support()\n'
         'from pathlib import Path\n'
         f'GUI = {gui!r}\n'
         'if GUI in ("qt6", "qt5"):\n'

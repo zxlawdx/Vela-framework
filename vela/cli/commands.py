@@ -34,6 +34,8 @@ Comandos disponíveis:
   installapp [--bundle dir] Instala build e cria atalho no sistema
   uninstallapp --slug name  Remove instalacao Linux do usuario
   makeworkflow              Cria CI Linux/Windows + release por tags
+  dbmigrate [--dir migrations] Aplica migrations locais SQLite
+  checkupdates --repo user/repo Consulta GitHub Releases sob demanda
   init-process:instalation  Assistente grafico de build/instalacao (Next)
   init-process:installation Alias com grafia corrigida
   help                      Exibe esta mensagem
@@ -72,6 +74,8 @@ class CommandRunner:
             "installapp":    self.cmd_installapp,
             "uninstallapp":  self.cmd_uninstallapp,
             "makeworkflow":  self.cmd_makeworkflow,
+            "dbmigrate":     self.cmd_dbmigrate,
+            "checkupdates":  self.cmd_checkupdates,
             "init-process:instalation": self.cmd_wizard,
             "init-process:installation": self.cmd_wizard,
             "help":          lambda _: print(HELP_TEXT),
@@ -366,3 +370,32 @@ def {name}_view(params: dict) -> str:
     def cmd_wizard(self, args):
         from vela.cli.wizard import launch_wizard
         return launch_wizard()
+
+    def cmd_dbmigrate(self, args):
+        import argparse
+        from pathlib import Path
+        from vela.database import SQLiteStore
+        from vela.cli.build import identity, read_settings
+        parser = argparse.ArgumentParser(prog="python manage.py dbmigrate")
+        parser.add_argument("--dir", default="migrations")
+        parser.add_argument("--database", default=None)
+        opts = parser.parse_args(args)
+        meta = identity(read_settings(Path.cwd()))
+        store = SQLiteStore(meta["slug"], database=opts.database)
+        migrated = store.migrate(opts.dir)
+        print("Banco:", store.path)
+        print("Migrations aplicadas:", ", ".join(migrated) if migrated else "nenhuma")
+
+    def cmd_checkupdates(self, args):
+        import argparse
+        from pathlib import Path
+        from vela.cli.build import read_settings
+        from vela.desktop import check_for_updates
+        parser = argparse.ArgumentParser(prog="python manage.py checkupdates")
+        parser.add_argument("--repo", required=True)
+        opts = parser.parse_args(args)
+        current = str(getattr(read_settings(Path.cwd()), "APP_VERSION", "0.1.0"))
+        result = check_for_updates(opts.repo, current)
+        print("Instalada:", result["current"], "| Disponivel:", result["latest"])
+        print("Nova versao:", "SIM" if result["available"] else "NAO")
+        print("Release:", result["url"])

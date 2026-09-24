@@ -40,7 +40,7 @@ def main():
     start.add_argument("name")
 
     for name in ("buildapp", "installapp", "uninstallapp", "doctor",
-                 "makeworkflow", "init-process:instalation",
+                 "makeworkflow", "dbmigrate", "checkupdates", "init-process:instalation",
                  "init-process:installation", "runapp", "collectstatic", "routes",
                  "version", "logs", "shell", "help"):
         subparsers.add_parser(name, add_help=False)
