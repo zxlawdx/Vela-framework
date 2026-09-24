@@ -38,7 +38,7 @@ def wsgi_request(app, url, method="GET", data=None):
 class ApiFeatures(unittest.TestCase):
     def setUp(self):
         self.routes = ApiRouter()
-        self.routes.post("/echo", handle)
+        self.routes.post("/echo")(handle)
         self.server = ApiServer(self.routes, port=0, docs_enabled=True)
         self.server.register_routes()
 
