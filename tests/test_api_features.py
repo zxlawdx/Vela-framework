@@ -59,6 +59,25 @@ class ApiFeatures(unittest.TestCase):
         self.assertIn(b"/api/openapi.json", body)
         self.assertNotIn(b"cdn.", body)
 
+    def test_local_css_replaces_external_shell_cdn(self):
+        import os
+        import tempfile
+        from pathlib import Path
+        previous = Path.cwd()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "staticfiles/css").mkdir(parents=True)
+            (root / "staticfiles/css/vela.bundle.css").write_text("/* offline */")
+            os.chdir(root)
+            try:
+                status, body = wsgi_request(self.server.app, "/__vela__/shell")
+                self.assertTrue(status.startswith("200"))
+                self.assertIn(b"static/css/vela.bundle.css", body)
+                self.assertNotIn(b"https://cdn.tailwindcss.com", body)
+                self.assertNotIn(b"tailwind.config", body)
+            finally:
+                os.chdir(previous)
+
     def test_docs_can_be_disabled_without_disabling_schema(self):
         disabled = ApiServer(self.routes, port=0, docs_enabled=False)
         status, _ = wsgi_request(disabled.app, "/api/docs")
