@@ -18,9 +18,11 @@ def executable_candidates(
     platform_name = platform_name or sys.platform
     windows = platform_name.startswith("win")
     candidates: list[str] = []
-    root = Path(project_root).resolve() if project_root else None
+    root = Path(project_root) if project_root else None
 
     if root is not None:
+        if not root.is_absolute():
+            root = Path.cwd() / root
         local = root / "node_modules" / ".bin"
         if windows:
             # npm creates POSIX shims and .cmd launchers side by side. Executing

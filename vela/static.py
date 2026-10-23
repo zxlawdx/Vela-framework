@@ -21,6 +21,8 @@ def _safe_relative(value: str | Path) -> Path:
     candidate = Path(text)
     if (
         not text
+        or text.startswith("/")
+        or text.startswith("//")
         or candidate.is_absolute()
         or _WINDOWS_ABSOLUTE_RE.match(text)
         or ".." in candidate.parts
@@ -120,7 +122,11 @@ class AssetManifest:
         files: dict[str, str] = {}
         if base.exists():
             for path in sorted(base.rglob("*")):
-                if not path.is_file() or path.name == MANIFEST_NAME or "__pycache__" in path.parts:
+                if (
+                    not path.is_file()
+                    or path.name == MANIFEST_NAME
+                    or "__pycache__" in path.parts
+                ):
                     continue
                 files[path.relative_to(base).as_posix()] = _sha256(path)
         return cls(base, files)
