@@ -11,6 +11,21 @@ import sqlite3
 from pathlib import Path
 
 
+class _VelaConnection(sqlite3.Connection):
+    """Connection cujo uso como context manager também fecha o handle.
+
+    ``sqlite3.Connection.__exit__`` apenas faz commit/rollback. Em aplicações
+    desktop isso é fácil de confundir com fechamento e, no Windows, mantém o
+    arquivo bloqueado. O Vela preserva a semântica transacional e fecha ao sair.
+    """
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
+
+
 def app_data_dir(app_id):
     if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.-]*", app_id):
         raise ValueError("Identificador de aplicativo inválido.")
@@ -52,7 +67,7 @@ class SQLiteStore:
 
     def connect(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        db = sqlite3.connect(self.path)
+        db = sqlite3.connect(self.path, factory=_VelaConnection)
         db.row_factory = sqlite3.Row
         db.execute("PRAGMA foreign_keys = ON")
         db.execute("PRAGMA busy_timeout = 5000")

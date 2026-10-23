@@ -56,6 +56,7 @@ class DistributionTests(unittest.TestCase):
         self.assertIn('VELA_GUI', s)
         self.assertNotIn("sudo", s)
 
+    @unittest.skipIf(os.name == "nt", "GTK build plan é específico de Linux")
     def test_builder_checks_frozen_gui_runtime(self):
         import inspect
         from vela.core.window import DesktopWindow
