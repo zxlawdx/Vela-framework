@@ -122,11 +122,7 @@ class AssetManifest:
         files: dict[str, str] = {}
         if base.exists():
             for path in sorted(base.rglob("*")):
-                if (
-                    not path.is_file()
-                    or path.name == MANIFEST_NAME
-                    or "__pycache__" in path.parts
-                ):
+                if not path.is_file() or path.name == MANIFEST_NAME or "__pycache__" in path.parts:
                     continue
                 files[path.relative_to(base).as_posix()] = _sha256(path)
         return cls(base, files)
