@@ -36,8 +36,7 @@ class DistributionTests(unittest.TestCase):
         (self.root / "apps").mkdir()
         (self.root / "manage.py").write_text("# test\n")
         (self.root / "config/settings.py").write_text(
-            "APP_TITLE='Teste Vela'\nAPP_VERSION='0.2.0'\n"
-            "APP_FILE_EXTENSIONS=['.dfd.json']\n"
+            "APP_TITLE='Teste Vela'\nAPP_VERSION='0.2.0'\n" "APP_FILE_EXTENSIONS=['.dfd.json']\n"
         )
 
     def test_native_backends(self):
@@ -92,9 +91,7 @@ class DistributionTests(unittest.TestCase):
             self.assertIn("pkg_resources", flags)
             for module in LEGACY_PKG_RESOURCES_MODULES:
                 self.assertIn(module, flags)
-            with patch(
-                "vela.cli.build.importlib.import_module", return_value=object()
-            ) as imported:
+            with patch("vela.cli.build.importlib.import_module", return_value=object()) as imported:
                 validate_legacy_pkg_resources()
                 imported.assert_called_with("pkg_resources")
         with patch("vela.cli.build._module_exists", return_value=False):
@@ -157,10 +154,7 @@ class DistributionTests(unittest.TestCase):
                 validate_legacy_pkg_resources()
 
     def test_doctor_can_offer_jaraco_repair(self):
-        missing = [
-            Check("Build: " + name, "missing", "")
-            for name in LEGACY_PKG_RESOURCES_MODULES
-        ]
+        missing = [Check("Build: " + name, "missing", "") for name in LEGACY_PKG_RESOURCES_MODULES]
         packages = missing_pip_packages(missing)
         self.assertIn("setuptools>=77,<82", packages)
         self.assertIn("jaraco.text>=3.12", packages)
