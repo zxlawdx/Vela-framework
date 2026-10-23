@@ -1,134 +1,146 @@
 # Arquitetura do Vela Framework
 
-Este documento descreve a arquitetura interna após o hardening do core. A API pública permanece deliberadamente pequena:
+O Vela continua sendo um framework desktop leve: Python + HTML/CSS/JS + WebView, com Bottle/Waitress como adapters HTTP. A arquitetura foi ajustada a partir de problemas observados em aplicações consumidoras reais sem trocar o stack principal.
+
+## Fluxo principal
+
+```text
+VelaApp (facade / composition root)
+   |
+   +--> ConfigLoader / VelaConfig
+   +--> AppRegistry ----> AppConfig
+   |                        |
+   |                        +--> views / urls / api
+   |                        +--> static / templates / resources
+   |                        +--> reloadable / persistent modules
+   |
+   +--> Router ----------> TemplateEngine
+   +--> ApiRouter -------> ApiServer -------> Bottle / Waitress
+   |                          |
+   |                          +--> StaticResolver / AssetManifest
+   |
+   +--> LifecycleManager
+   +--> HotReloadManager
+   +--> EventBus / JobManager
+   +--> Bridge -----------> PlatformServices
+   |                          |
+   |                          +--> native clipboard
+   |
+   +--> DesktopWindow ----> pywebview ----> WebView engine
+                                  |
+                                  v
+                            Vela UI Shell
+                                  |
+                             #vela-app-root
+                                  |
+                            application DOM
+```
+
+A regra arquitetural é: **Vela Runtime é obrigatório; Vela UI Shell é opcional**. Aplicações com shell próprio podem desabilitar sidebar/topbar sem carregar espaçadores ou resets visuais residuais.
+
+## Registro de aplicações
+
+O caminho legado continua aceito:
 
 ```python
-from vela import VelaApp
-
-app = VelaApp(settings_module="config.settings")
 app.register_app("apps.home")
-app.run()
 ```
 
-## Visão geral
+Internamente ele é convertido para `AppConfig`. Aplicações novas podem declarar um manifesto explícito:
+
+```python
+from vela.apps import AppConfig
+
+class NetworkConfig(AppConfig):
+    def __init__(self):
+        super().__init__(
+            name="network",
+            module="apps.network",
+            reloadable_modules=("apps.network.views",),
+            persistent_modules=("apps.network.services", "apps.network.providers"),
+            hidden_imports=("some_optional_driver",),
+        )
+```
+
+`register_app()` importa o módulo de API sob o registry da aplicação. Um projeto não precisa importar `apps.foo.api` apenas para provocar o side effect dos decorators.
+
+## Routing e navegação
+
+`Router` mantém índices `path -> Route` e `name -> Route`, com lookup O(1) médio. `RouteResult` representa explicitamente `ok`, `status`, `html`, `layout`, `theme` e `error_id`.
+
+No frontend cada navegação recebe uma generation ID. Uma resposta antiga não pode substituir uma navegação mais recente. Cada página recebe `VelaPage.signal`, um `AbortSignal` cancelado ao sair da página, além dos hooks:
+
+- `beforeMount`
+- `mounted`
+- `beforeUnmount`
+- `unmounted`
+
+O shell usa um único listener delegado para links Vela, evitando listeners globais acumulados a cada render.
+
+## Shell boundary
+
+O host visual é delimitado por `.vela-shell`; o conteúdo da aplicação começa em `#vela-app-root`. Estilos do framework não usam resets globais para `*`, `main`, `dialog`, `button`, `canvas`, `contenteditable` ou `.textLayer`.
+
+O shell não desabilita `user-select`, não injeta padding no app root e não aplica `transform`, `filter`, `backdrop-filter` ou `contain` no container do conteúdo. Isso evita interferência em editores, seleção de texto, Canvas e WebGL.
+
+## Templates
+
+O template engine usa parser/AST/cache. `{{ value }}` e valores de loops são escapados por padrão; HTML intencionalmente confiável usa `mark_safe()`/`SafeHTML`.
+
+`{{ static("css/app.css") }}` delega ao `StaticResolver`, para que o template não conheça o namespace interno de assets.
+
+## Static e build
+
+Os diretórios têm responsabilidades diferentes:
 
 ```text
-                         +----------------------+
-                         |       VelaApp        |
-                         |  composition root    |
-                         +----------+-----------+
-                                    |
-        +---------------------------+---------------------------+
-        |             |             |             |             |
-        v             v             v             v             v
-  ConfigLoader      Router       ApiRouter     Lifecycle   HotReloadManager
-        |             |             |             |             |
-        |             |             v             |             |
-        |             |       ApiServer/HTTP      |             |
-        |             |       Bottle+Waitress     |             |
-        |             |             |             |             |
-        |             +------> BaseBridge <-------+-------------+
-        |                           |
-        |                           v
-        +--------------------> DesktopWindow
-                                pywebview
+apps/*/static     source static
+staticfiles/      collected/runtime static
+.vela-build/      workspace temporário de build
+ dist/            distribuição final
 ```
 
-`VelaApp` é a facade e o composition root. Ele cria e conecta os componentes, mas não implementa routing, parsing de templates, servidor HTTP, hot reload ou lifecycle.
-
-## Configuração
-
-`vela.config.ConfigLoader` carrega a configuração com precedência:
-
-```text
-defaults < config/settings.py < argumentos do VelaApp < VELA_PRODUCTION
-```
-
-Os modelos `VelaConfig`, `ApiConfig`, `WindowConfig` e `LayoutConfig` usam `dataclass(frozen=True, slots=True)` e validam valores no startup. As chaves legadas (`APP_TITLE`, `WINDOW_WIDTH`, `LAYOUT`, `API`, etc.) continuam aceitas. `VelaApp._config` permanece como representação `dict` de compatibilidade.
-
-`VELA_PRODUCTION=1` força `debug=False`, independentemente do settings local.
-
-## Routing visual
-
-`vela.core.router.Router` mantém dois índices: `path -> Route` e `name -> Route`. Lookup é O(1) médio. Conflitos inesperados de path/nome falham cedo; `Route.render()` executa apenas o handler atual e não possui lógica de hot reload.
-
-`Router.resolve()` retorna `RouteResult` com contrato explícito. 404 e 500 usam `ok=False` e status apropriado. Exceções recebem `VELA-E-<id>`; detalhes ficam em log e são ocultados em produção. As rotas da sidebar são ordenadas uma vez e cacheadas até nova mutação do registry.
+`StaticResolver` define URL, resolução segura e roots. `AssetManifest` registra SHA-256 dos assets coletados. `vela assets verify` valida o contrato antes da distribuição.
 
 ## API HTTP
 
-`ApiRouter` usa `dict[(method, path)] -> ApiRoute`. Registro e lookup são O(1) médio; substituir a mesma chave preserva a ordem de inserção. `ApiRoute` calcula `inspect.signature()` e `typing.get_type_hints()` uma vez, no registro.
+`ApiRouter` usa `dict[(method, path)] -> ApiRoute`, mantendo registro/lookup O(1) médio. O prefixo é responsabilidade do servidor: com `prefix="/api"`, `@api.get("/devices")` publica `/api/devices`. Declarar `/api/devices` no decorator falha cedo em vez de gerar `/api/api/devices`.
 
-`vela.core.http` define `Request`, `Response` e `ResponseEncoder`. Forma nova recomendada:
+Métodos suportados: GET, HEAD, POST, PUT, PATCH, DELETE e OPTIONS. `Request` contém method, path, query, headers, json, body e `path_params`. `Response` centraliza status, headers e content type.
 
-```python
-from vela.api import api
-from vela.core.http import Request, Response
+O limite do body é configurado por `API["max_body_size"]`; consumidores não precisam tocar `bottle.BaseRequest`.
 
-@api.post("/items")
-def create(request: Request):
-    return Response({"ok": True, "item": request.json}, status=201)
-```
+## Lifecycle
 
-Handlers antigos `handler()`, `handler(data)` e `handler(context)` continuam aceitos. Em debug, `data/context` emitem `DeprecationWarning` quando aplicável.
-
-## HTTP como adapter
-
-`vela.core.interfaces.HttpServer` formaliza a fronteira mínima de servidor. `ApiServer` é o adapter Bottle/Waitress padrão. Bottle não foi removido; a dependência apenas deixou de determinar a arquitetura inteira.
-
-Com Waitress, a porta é vinculada pelo servidor real. Em `auto_port=True`, falha de bind na porta preferida tenta `port=0` no próprio adapter e publica a porta efetivamente vinculada. O helper `resolve_port()` é mantido apenas por compatibilidade e testes do adapter Bottle.
-
-## Rendering
-
-O template engine usa pipeline explícito:
+Estados explícitos:
 
 ```text
-source -> tokenize -> parse -> AST -> CompiledTemplate -> render
+created -> configured -> starting -> running -> stopping -> stopped
 ```
 
-Nós mínimos: `TextNode`, `VariableNode`, `UrlNode`, `StaticNode` e `ForNode`. Valores de `{{ variavel }}` e `{{ item.campo }}` são escapados automaticamente. `mark_safe()` é a única forma suportada de declarar HTML intencionalmente confiável.
-
-Templates em arquivo são compilados e cacheados por `(path, mtime_ns, size)`. O cache é limitado a 256 entradas e pode ser limpo por `clear_template_cache()`.
-
-## WebView e bridge
-
-`DesktopWindow` é o adapter pywebview. `BaseBridge` é a facade exposta ao JavaScript. Dados vindos da WebView são tratados como input não confiável: paths e payloads são validados antes de alcançar o router.
-
-O shell continua suportando scripts de página por compatibilidade. O boundary é explícito: o template da aplicação é código confiável; dados de contexto não são. Scripts são executados apenas para `RouteResult.ok=True`, nunca para 404/500 internos.
-
-O lifecycle de página suporta `beforeUnmount`, `unmounted` e `mounted`, todos isolados contra exceptions. O listener delegado de links é instalado uma vez no container persistente.
+`app.stop()` é idempotente. Shutdown executa callbacks em ordem reversa e encerra servidor HTTP, janela quando o backend permite, hot reload, EventBus e demais recursos registrados.
 
 ## Hot reload
 
-`HotReloadManager` é o único componente responsável pelo reload em desenvolvimento. Ele rastreia somente módulos explicitamente carregados por `register_app()`, guarda `mtime_ns` e recarrega apenas os módulos alterados.
+O Vela não faz mais reload indiscriminado de `apps.*`. `HotReloadManager` observa apenas módulos declarados. Views podem ser reloadable; sessions/providers/services podem ser persistentes. Modules persistentes preservam identidade e estado entre navegações e reloads de UI.
 
-Após reload, callbacks atualizam referências de handlers no `Router` e `ApiRouter`. Decorators da API executam sob o contexto do router da aplicação, evitando duplicação no registry global. Em `VELA_PRODUCTION=1`, o manager é desativado mesmo se solicitado.
+Veja `HOT_RELOAD.md`.
 
-## Estado por aplicação
+## WebView e bridge
 
-Cada `VelaApp` possui `Router`, `ApiRouter`, `EventBus`, `LifecycleManager` e `HotReloadManager` próprios. `from vela.api import api` permanece como facade ergonômica, mas usa `contextvars` para delegar ao registry da aplicação corrente. Decorators importados antes da criação do app são tratados como blueprint de compatibilidade e clonados para novas aplicações.
+`BaseBridge` é a facade JS/Python. Entrada JS é tratada como não confiável e recebe validação de tipo/tamanho. `Vela.platform.clipboard.writeText()` tenta clipboard nativo pela Bridge e usa fallback DOM seguro; não depende de `navigator.clipboard`.
 
-O `vela.events.bus` global permanece apenas como compatibilidade; o core não depende dele.
-
-## Lifecycle e shutdown
-
-Fases:
-
-```text
-configure -> startup -> api_start -> window_start -> running -> shutdown
-```
-
-`LifecycleManager` controla callbacks de startup/shutdown. Shutdown é idempotente e executa callbacks em ordem reversa. O servidor HTTP e o EventBus da aplicação são registrados para cleanup.
-
-`JobManager` possui backpressure por `BoundedSemaphore`, recusa submit após shutdown e encerra pools de IO/CPU com `cancel_futures=True`.
-
-## Persistência
-
-`SQLiteStore` preserva `foreign_keys=ON`, `busy_timeout=5000`, migrations ordenadas, SHA-256, imutabilidade da história e transação por migration. WAL + `synchronous=NORMAL` são habilitados quando o ambiente suporta. Dados da tabela `vela_migrations` são inseridos com parâmetros SQL.
-
-## Plugins
-
-`PluginManager` adiciona metadata mínima (`name`, `priority`, `enabled`) e contextualiza falhas por plugin/hook. Entry points continuam explicitamente executados somente quando o fluxo de build chama `apply_build_hooks()`.
+`Vela.capabilities()` combina capabilities nativas com probes reais do browser para PointerEvent, Canvas, WebGL/WebGL2 e localStorage. O backend não declara capabilities de GPU apenas pelo sistema operacional.
 
 ## Compatibilidade
 
-Os caminhos antigos principais continuam válidos: `vela.core.app.VelaApp`, `vela.core.router.Router`, `vela.core.api_router.ApiRouter`, `vela.template_engine.engine.render_template`, `from vela.api import api`, handlers `data/context` e `_config` em formato dict. O import recomendado passa a ser `from vela import VelaApp`.
+Continuam suportados:
+
+- `from vela import VelaApp`
+- `app.register_app("apps.foo")`
+- `from vela.api import api`
+- handlers legados `handler()`, `handler(data)`, `handler(context)`
+- Bottle, Waitress e pywebview
+- settings legados `APP_TITLE`, `LAYOUT`, `API`, `STATIC_ROOT`, `SHELL_MODE` etc.
+
+Mudanças deliberadamente mais estritas são documentadas no CHANGELOG e nos documentos de segurança/build.
