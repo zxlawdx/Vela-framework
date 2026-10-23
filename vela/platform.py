@@ -19,7 +19,12 @@ class ClipboardService:
     @property
     def available(self) -> bool:
         if self.platform_name.startswith("win"):
-            return True
+            try:
+                import ctypes
+
+                return bool(ctypes.windll.user32.OpenClipboard)
+            except (AttributeError, OSError):
+                return False
         if self.platform_name == "darwin":
             return shutil.which("pbcopy") is not None
         return any(shutil.which(name) for name in ("wl-copy", "xclip", "xsel"))
@@ -62,6 +67,9 @@ class ClipboardService:
 
             user32 = ctypes.windll.user32
             kernel32 = ctypes.windll.kernel32
+            kernel32.GlobalAlloc.restype = ctypes.c_void_p
+            kernel32.GlobalLock.restype = ctypes.c_void_p
+            user32.SetClipboardData.restype = ctypes.c_void_p
             cf_unicode_text = 13
             gmem_moveable = 0x0002
             encoded = (text + "\0").encode("utf-16-le")
@@ -83,7 +91,7 @@ class ClipboardService:
                 if not user32.SetClipboardData(cf_unicode_text, handle):
                     kernel32.GlobalFree(handle)
                     return False
-                handle = None  # clipboard owns the allocation now
+                handle = None  # the clipboard owns the allocation now
                 return True
             finally:
                 user32.CloseClipboard()

@@ -18,9 +18,11 @@ import time
 from pathlib import Path
 from wsgiref.util import setup_testing_defaults
 
+from vela.apps import AppRegistry
 from vela.core.api_router import ApiRouter
 from vela.core.api_server import ApiServer
 from vela.core.router import Router
+from vela.static import StaticResolver
 from vela.template_engine import (
     clear_template_cache,
     compile_template,
@@ -80,6 +82,22 @@ def benchmark_api_registration(count):
             router.get(f"/route-{index}")(lambda index=index: index)
 
     return samples(run, repeat=25, warmup=3)
+
+
+def benchmark_app_manifest_registration():
+    def run():
+        registry = AppRegistry()
+        for index in range(1000):
+            registry.register(f"apps.fixture_{index}")
+
+    return samples(run, repeat=25, warmup=3)
+
+
+def benchmark_static_url():
+    resolver = StaticResolver.for_project(".")
+    return samples(
+        lambda: resolver.url("documents/fonts/editor font.woff2"), repeat=1000
+    )
 
 
 def benchmark_template_parse():
@@ -148,6 +166,8 @@ def main():
         "api_registration_10": benchmark_api_registration(10),
         "api_registration_100": benchmark_api_registration(100),
         "api_registration_1000": benchmark_api_registration(1000),
+        "app_manifest_registration_1000": benchmark_app_manifest_registration(),
+        "static_url": benchmark_static_url(),
         "template_parse": benchmark_template_parse(),
         "template_render_100_items": benchmark_template_render(),
         "template_loop_1000": benchmark_template_loop(),
