@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Integração entre eventos, jobs, SQLite, plugins e templates."""
+
 import io
 import json
 import os
@@ -30,19 +31,12 @@ class RuntimeFeatureTests(unittest.TestCase):
         folder = self.root / "migrations"
         folder.mkdir()
         sql = folder / "001_setup.sql"
-        sql.write_text(
-            "CREATE TABLE messages(id INTEGER PRIMARY KEY, content TEXT);"
-        )
+        sql.write_text("CREATE TABLE messages(id INTEGER PRIMARY KEY, content TEXT);")
         database = SQLiteStore("test-vela", self.root / "app.db")
         self.assertEqual(database.migrate(folder), ["001_setup.sql"])
         self.assertEqual(database.migrate(folder), [])
         with database.connect() as db:
-            tables = {
-                x[0]
-                for x in db.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table'"
-                )
-            }
+            tables = {x[0] for x in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             self.assertIn("messages", tables)
         sql.write_text("CREATE TABLE messages(id INTEGER PRIMARY KEY);")
         with self.assertRaises(RuntimeError):
@@ -50,9 +44,7 @@ class RuntimeFeatureTests(unittest.TestCase):
 
     def test_event_bus_serializes_python_payload_for_javascript(self):
         received = []
-        window = type(
-            "Window", (), {"evaluate_js": lambda self, js: received.append(js)}
-        )()
+        window = type("Window", (), {"evaluate_js": lambda self, js: received.append(js)})()
         bus = EventBus()
         local = []
         bus.on("progress", local.append)
@@ -62,7 +54,7 @@ class RuntimeFeatureTests(unittest.TestCase):
         self.assertEqual(local, [data])
         self.assertIn("new CustomEvent('vela:event'", received[0])
         self.assertIn("console.log", received[0])
-        self.assertIn(r'\"injection', received[0])
+        self.assertIn(r"\"injection", received[0])
         bus.off("progress", local.append)
 
     def test_io_tasks_return_result(self):

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Hot reload seletivo baseado em mtime; nunca ativo em produção."""
+
 from __future__ import annotations
 
 import importlib

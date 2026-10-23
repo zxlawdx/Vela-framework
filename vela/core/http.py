@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Contratos HTTP explícitos e serialização centralizada."""
+
 from __future__ import annotations
 
 import json

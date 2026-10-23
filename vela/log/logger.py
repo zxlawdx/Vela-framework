@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Logging padronizado do Vela."""
+
 from __future__ import annotations
 
 import logging

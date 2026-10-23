@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Lexer/parser pequeno e determinístico para templates Vela."""
+
 from __future__ import annotations
 
 import re

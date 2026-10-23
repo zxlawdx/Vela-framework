@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Routing visual do Vela."""
+
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
@@ -186,9 +187,7 @@ class Router:
     def get_sidebar_routes(self) -> list[dict[str, Any]]:
         if self._sidebar_cache is None:
             visible = (
-                route
-                for route in self._routes.values()
-                if route.show_in_sidebar and route.title
+                route for route in self._routes.values() if route.show_in_sidebar and route.title
             )
             self._sidebar_cache = tuple(
                 route.to_dict() for route in sorted(visible, key=lambda route: route.order)

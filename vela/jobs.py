@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Pools de IO/CPU com backpressure e shutdown idempotente."""
+
 from __future__ import annotations
 
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -20,12 +21,8 @@ class JobManager:
             raise ValueError("Quantidade de workers inválida.")
         if max_pending_jobs is not None and max_pending_jobs <= 0:
             raise ValueError("max_pending_jobs deve ser positivo ou None.")
-        self.io_pool = ThreadPoolExecutor(
-            max_workers=io_workers, thread_name_prefix="vela-io"
-        )
-        self.cpu_pool = (
-            ProcessPoolExecutor(max_workers=cpu_workers) if cpu_workers else None
-        )
+        self.io_pool = ThreadPoolExecutor(max_workers=io_workers, thread_name_prefix="vela-io")
+        self.cpu_pool = ProcessPoolExecutor(max_workers=cpu_workers) if cpu_workers else None
         self._lock = RLock()
         self._closed = False
         self._block_when_full = bool(block_when_full)
@@ -35,21 +32,11 @@ class JobManager:
         with self._lock:
             if self._closed:
                 raise RuntimeError("JobManager já foi encerrado.")
-            pool = (
-                self.io_pool
-                if mode == "io"
-                else self.cpu_pool
-                if mode == "cpu"
-                else None
-            )
+            pool = self.io_pool if mode == "io" else self.cpu_pool if mode == "cpu" else None
             if pool is None:
                 raise ValueError("Modo inválido ou CPU pool não habilitado.")
-            if self._slots is not None and not self._slots.acquire(
-                blocking=self._block_when_full
-            ):
-                raise JobQueueFullError(
-                    "Fila de jobs do Vela atingiu o limite configurado."
-                )
+            if self._slots is not None and not self._slots.acquire(blocking=self._block_when_full):
+                raise JobQueueFullError("Fila de jobs do Vela atingiu o limite configurado.")
             try:
                 future = pool.submit(callback, *args, **kwargs)
             except Exception:

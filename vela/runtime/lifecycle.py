@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Lifecycle explícito e shutdown idempotente."""
+
 from __future__ import annotations
 
 from collections.abc import Callable

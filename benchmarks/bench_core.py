@@ -6,6 +6,7 @@ Execute da raiz do repositório:
 
 Os números são diagnósticos, não gates de CI.
 """
+
 from __future__ import annotations
 
 import io
@@ -103,9 +104,7 @@ def benchmark_template_render():
 def benchmark_template_loop():
     context = {"items": [{"name": f"item-{i}"} for i in range(1000)]}
     return samples(
-        lambda: render_string(
-            '{{ for("items") }}{{ item.name }}{{ endfor }}', context
-        ),
+        lambda: render_string('{{ for("items") }}{{ item.name }}{{ endfor }}', context),
         repeat=100,
         warmup=5,
     )
@@ -120,9 +119,7 @@ def benchmark_template_cache():
         miss = samples(
             lambda: (
                 clear_template_cache(),
-                render_template(
-                    str(template), {"value": "x"}, template_roots=[root]
-                ),
+                render_template(str(template), {"value": "x"}, template_roots=[root]),
             ),
             repeat=50,
             warmup=2,
@@ -130,9 +127,7 @@ def benchmark_template_cache():
         clear_template_cache()
         render_template(str(template), {"value": "x"}, template_roots=[root])
         hit = samples(
-            lambda: render_template(
-                str(template), {"value": "x"}, template_roots=[root]
-            ),
+            lambda: render_template(str(template), {"value": "x"}, template_roots=[root]),
             repeat=500,
         )
         return {"miss": miss, "hit": hit}

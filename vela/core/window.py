@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Adapter pywebview da janela desktop."""
+
 from __future__ import annotations
 
 import json
@@ -44,11 +45,7 @@ class DesktopWindow:
         if self.shell_mode == "file":
             return (CORE_DIR / "shell.html").as_uri()
         target_host = (
-            "127.0.0.1"
-            if self.host == "0.0.0.0"
-            else "::1"
-            if self.host == "::"
-            else self.host
+            "127.0.0.1" if self.host == "0.0.0.0" else "::1" if self.host == "::" else self.host
         )
         host_for_url = (
             f"[{target_host}]"

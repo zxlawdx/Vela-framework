@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Persistência SQLite com migrations imutáveis, concorrentes e transacionais."""
+
 from __future__ import annotations
 
 import hashlib
@@ -45,9 +46,7 @@ def _iter_sql_statements(source: str):
 class SQLiteStore:
     def __init__(self, app_id, database=None, *, wal=True):
         self.path = (
-            Path(database).expanduser()
-            if database
-            else app_data_dir(app_id) / "app.sqlite3"
+            Path(database).expanduser() if database else app_data_dir(app_id) / "app.sqlite3"
         )
         self.wal = bool(wal)
 
@@ -92,9 +91,7 @@ class SQLiteStore:
                     ).fetchone()
                     if row is not None:
                         if row[0] != digest:
-                            raise RuntimeError(
-                                "Migration já aplicada foi alterada: " + name
-                            )
+                            raise RuntimeError("Migration já aplicada foi alterada: " + name)
                         conn.commit()
                         continue
                     for statement in _iter_sql_statements(sql):

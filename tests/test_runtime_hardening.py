@@ -103,9 +103,7 @@ class DatabaseHardeningTests(unittest.TestCase):
             def run():
                 try:
                     barrier.wait(timeout=2)
-                    results.append(
-                        SQLiteStore("test", database).migrate(migrations)
-                    )
+                    results.append(SQLiteStore("test", database).migrate(migrations))
                 except Exception as exc:
                     errors.append(exc)
 
@@ -132,9 +130,7 @@ class DatabaseHardeningTests(unittest.TestCase):
             with store.connect() as db:
                 names = {
                     row[0]
-                    for row in db.execute(
-                        "SELECT name FROM sqlite_master WHERE type='table'"
-                    )
+                    for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
                 }
             self.assertNotIn("transient", names)
 
@@ -153,9 +149,7 @@ class HotReloadTests(unittest.TestCase):
                 manager.track_module(a)
                 manager.track_module(b)
                 reloaded = []
-                manager.add_reload_callback(
-                    lambda name, module: reloaded.append(name)
-                )
+                manager.add_reload_callback(lambda name, module: reloaded.append(name))
                 (root / "hot_a.py").write_text("VALUE = 2\n", encoding="utf-8")
                 now = time.time_ns() + 2_000_000_000
                 os.utime(root / "hot_a.py", ns=(now, now))

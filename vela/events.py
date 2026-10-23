@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Event bus app-scoped para callbacks Python e eventos da WebView."""
+
 from __future__ import annotations
 
 import json
@@ -48,9 +49,7 @@ class EventBus:
         try:
             encoded = json.dumps(detail, ensure_ascii=False)
         except (TypeError, ValueError) as exc:
-            raise TypeError(
-                f"Payload do evento {name!r} não é serializável em JSON."
-            ) from exc
+            raise TypeError(f"Payload do evento {name!r} não é serializável em JSON.") from exc
         js = f"window.dispatchEvent(new CustomEvent('vela:event', {{detail: {encoded}}}));"
         with self._lock:
             listeners = tuple(self._subscribers.get(name, ()))

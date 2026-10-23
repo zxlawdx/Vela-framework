@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Adapter HTTP Bottle/Waitress do Vela."""
+
 from __future__ import annotations
 
 import inspect
@@ -149,9 +150,7 @@ class ApiServer:
             @self.app.get(self.prefix + "/docs")
             def docs():
                 response.content_type = "text/html; charset=utf-8"
-                return DOCS_HTML.replace(
-                    "__VELA_OPENAPI_PATH__", self.prefix + "/openapi.json"
-                )
+                return DOCS_HTML.replace("__VELA_OPENAPI_PATH__", self.prefix + "/openapi.json")
 
         @self.app.get("/__vela__/shell")
         def serve_shell():
@@ -270,15 +269,11 @@ class ApiServer:
                     f"{error_id} exception em {request.method} {request.path}: {exc}"
                 )
                 message = str(exc) if self.debug else f"Erro interno. Código: {error_id}"
-                return self._error_response(
-                    500, "internal_error", message, error_id=error_id
-                )
+                return self._error_response(500, "internal_error", message, error_id=error_id)
             finally:
                 if self.debug:
                     elapsed = (time.perf_counter() - t0) * 1000
-                    self.logger.debug(
-                        f"{request.method} {request.path}: {elapsed:.1f} ms"
-                    )
+                    self.logger.debug(f"{request.method} {request.path}: {elapsed:.1f} ms")
 
         return wrapper
 
@@ -339,17 +334,13 @@ class ApiServer:
         length = request.content_length
         if length is not None and length > self.max_body_size:
             response.status = 413
-            raise ApiValidationError(
-                f"Request body excede o limite de {self.max_body_size} bytes."
-            )
+            raise ApiValidationError(f"Request body excede o limite de {self.max_body_size} bytes.")
         if request.method in {"GET", "HEAD", "OPTIONS"}:
             return b"", {}
         raw = request.body.read(self.max_body_size + 1)
         if len(raw) > self.max_body_size:
             response.status = 413
-            raise ApiValidationError(
-                f"Request body excede o limite de {self.max_body_size} bytes."
-            )
+            raise ApiValidationError(f"Request body excede o limite de {self.max_body_size} bytes.")
         if not raw:
             return raw, {}
         content_type = (request.content_type or "").lower()
@@ -410,12 +401,10 @@ class ApiServer:
             for route in self.api_router.routes:
                 method = escape(route.method, quote=True)
                 path = escape(self.prefix + route.path, quote=True)
-                handler = escape(
-                    getattr(route.handler, "__name__", "handler"), quote=True
-                )
+                handler = escape(getattr(route.handler, "__name__", "handler"), quote=True)
                 cards.append(
                     f'<section class="route"><strong>{method}</strong> '
-                    f'<code>{path}</code><small>handler: {handler}</small></section>'
+                    f"<code>{path}</code><small>handler: {handler}</small></section>"
                 )
             routes_html = "".join(cards) or "<p>Nenhuma rota de API registrada.</p>"
             return (
@@ -459,9 +448,7 @@ class ApiServer:
                     self._waitress_server = self._create_waitress_server(desired)
                 except OSError:
                     if not self.auto_port:
-                        raise RuntimeError(
-                            f"A porta {desired} já está em uso em {self.host}."
-                        )
+                        raise RuntimeError(f"A porta {desired} já está em uso em {self.host}.")
                     self.logger.warning(
                         f"Porta {desired} indisponível durante bind; solicitando porta dinâmica."
                     )
@@ -476,9 +463,7 @@ class ApiServer:
             return self.port
 
         if self.server == "bottle":
-            self.port = self.resolve_port(
-                self.host, self.requested_port, self.auto_port
-            )
+            self.port = self.resolve_port(self.host, self.requested_port, self.auto_port)
 
             def serve():
                 run(app=self.app, host=self.host, port=self.port, quiet=True)
@@ -491,11 +476,7 @@ class ApiServer:
     def wait_until_ready(self, timeout: float = 10.0):
         deadline = time.monotonic() + timeout
         probe_host = (
-            "127.0.0.1"
-            if self.host == "0.0.0.0"
-            else "::1"
-            if self.host == "::"
-            else self.host
+            "127.0.0.1" if self.host == "0.0.0.0" else "::1" if self.host == "::" else self.host
         )
         while time.monotonic() < deadline:
             try:

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Facade compatível de API com registry por aplicação."""
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -19,9 +20,7 @@ class ApiFacade:
 
     def __init__(self):
         self._blueprint = ApiRouter()
-        self._current: ContextVar[ApiRouter | None] = ContextVar(
-            "vela_api_router", default=None
-        )
+        self._current: ContextVar[ApiRouter | None] = ContextVar("vela_api_router", default=None)
 
     def _target(self) -> ApiRouter:
         return self._current.get() or self._blueprint

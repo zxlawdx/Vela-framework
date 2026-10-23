@@ -16,18 +16,10 @@ from vela.core.router import Router
 from vela.exceptions import ConfigurationError
 
 
-def wsgi_request(
-    app, url, method="GET", data=None, raw=None, content_type="application/json"
-):
+def wsgi_request(app, url, method="GET", data=None, raw=None, content_type="application/json"):
     env = {}
     setup_testing_defaults(env)
-    body = (
-        raw
-        if raw is not None
-        else json.dumps(data).encode()
-        if data is not None
-        else b""
-    )
+    body = raw if raw is not None else json.dumps(data).encode() if data is not None else b""
     env.update(
         REQUEST_METHOD=method,
         PATH_INFO=url,
@@ -124,9 +116,7 @@ class HttpContractTests(unittest.TestCase):
 
         server = ApiServer(router, port=0)
         server.register_routes()
-        status, _, body = wsgi_request(
-            server.app, "/api/typed", "POST", {"name": "Vela"}
-        )
+        status, _, body = wsgi_request(server.app, "/api/typed", "POST", {"name": "Vela"})
         self.assertTrue(status.startswith("200"))
         self.assertEqual(json.loads(body), {"method": "POST", "name": "Vela"})
 
@@ -153,9 +143,7 @@ class HttpContractTests(unittest.TestCase):
         router.post("/x")(lambda data: data)
         server = ApiServer(router, port=0)
         server.register_routes()
-        status, _, body = wsgi_request(
-            server.app, "/api/x", "POST", raw=b"{broken"
-        )
+        status, _, body = wsgi_request(server.app, "/api/x", "POST", raw=b"{broken")
         self.assertTrue(status.startswith("400"))
         payload = json.loads(body)
         self.assertFalse(payload["ok"])
@@ -166,9 +154,7 @@ class HttpContractTests(unittest.TestCase):
         router.post("/x")(lambda data: data)
         server = ApiServer(router, port=0, max_body_size=8)
         server.register_routes()
-        status, _, body = wsgi_request(
-            server.app, "/api/x", "POST", raw=b'{"long":"payload"}'
-        )
+        status, _, body = wsgi_request(server.app, "/api/x", "POST", raw=b'{"long":"payload"}')
         self.assertTrue(status.startswith("413"))
         self.assertEqual(json.loads(body)["error"]["code"], "payload_too_large")
 
@@ -189,9 +175,7 @@ class HttpContractTests(unittest.TestCase):
 
     def test_explicit_response_contract(self):
         router = ApiRouter()
-        router.get("/created")(
-            lambda: Response({"ok": True}, status=201, headers={"X-Test": "1"})
-        )
+        router.get("/created")(lambda: Response({"ok": True}, status=201, headers={"X-Test": "1"}))
         server = ApiServer(router, port=0)
         server.register_routes()
         status, headers, body = wsgi_request(server.app, "/api/created")

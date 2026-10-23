@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Bridge mínima e validada entre JavaScript e Python."""
+
 from __future__ import annotations
 
 import json
@@ -67,9 +68,7 @@ class BaseBridge:
 
         self.hot_reload.refresh()
         result = self.router.resolve(path, parsed_params)
-        self.logger.info(
-            f"navigate() → {path} [status={result.status}, layout={result.layout}]"
-        )
+        self.logger.info(f"navigate() → {path} [status={result.status}, layout={result.layout}]")
         return {
             "ok": result.ok,
             "html": result.html,

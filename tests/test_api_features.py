@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Contratos da API/documentacao e regressoes de desempenho sem rede."""
+
 import inspect
 import io
 import json
@@ -97,18 +98,14 @@ class ApiFeatures(unittest.TestCase):
         self.assertTrue(status.startswith("200"))
 
     def test_handler_signature_is_cached_across_requests(self):
-        with patch(
-            "vela.core.api_router.inspect.signature", wraps=inspect.signature
-        ) as signature:
+        with patch("vela.core.api_router.inspect.signature", wraps=inspect.signature) as signature:
             routes = ApiRouter()
             routes.post("/echo")(handle)
             calls_after_register = signature.call_count
             server = ApiServer(routes, port=0)
             server.register_routes()
             for i in range(12):
-                status, body = wsgi_request(
-                    server.app, "/api/echo", "POST", {"hello": i}
-                )
+                status, body = wsgi_request(server.app, "/api/echo", "POST", {"hello": i})
                 self.assertTrue(status.startswith("200"))
                 self.assertEqual(json.loads(body)["echo"], i)
             self.assertEqual(signature.call_count, calls_after_register)
@@ -144,9 +141,7 @@ class ApiFeatures(unittest.TestCase):
         router = Router()
         router.add("/home", view)
         manager = HotReloadManager(enabled=False)
-        bridge = BaseBridge(
-            router=router, config={"debug": False}, hot_reload=manager
-        )
+        bridge = BaseBridge(router=router, config={"debug": False}, hot_reload=manager)
         result = bridge.navigate("/home")
         self.assertTrue(result["ok"])
         self.assertEqual(result["status"], 200)

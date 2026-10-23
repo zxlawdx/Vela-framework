@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Configuração tipada com compatibilidade para settings.py legado."""
+
 from __future__ import annotations
 
 import importlib

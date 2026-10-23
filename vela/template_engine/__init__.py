@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """API pública do template engine Vela."""
+
 from vela.template_engine.engine import (
     CompiledTemplate,
     clear_template_cache,

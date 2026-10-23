@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Template engine Vela: AST compilada, autoescaping e cache bounded."""
+
 from __future__ import annotations
 
 import os

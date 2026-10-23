@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Primitivas de confiança e escaping do template engine."""
+
 from __future__ import annotations
 
 from html import escape

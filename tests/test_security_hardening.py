@@ -21,7 +21,7 @@ class TemplateSecurityTests(unittest.TestCase):
         payloads = {
             "script": "<script>alert(1)</script>",
             "image": '<img src=x onerror="alert(1)">',
-            "quotes": '"single\' & < >',
+            "quotes": "\"single' & < >",
         }
         html = render_string("{{ script }}|{{ image }}|{{ quotes }}", payloads)
         self.assertNotIn("<script>", html)
@@ -163,9 +163,7 @@ class DynamicImportSecurityTests(unittest.TestCase):
             try:
                 with self.assertRaises(ModuleNotFoundError) as caught:
                     ConfigLoader("cfgbroken.settings").load_module()
-                self.assertEqual(
-                    caught.exception.name, "dependency_that_does_not_exist_12345"
-                )
+                self.assertEqual(caught.exception.name, "dependency_that_does_not_exist_12345")
             finally:
                 sys.path.remove(directory)
                 for name in tuple(sys.modules):
@@ -186,14 +184,10 @@ class DynamicImportSecurityTests(unittest.TestCase):
             )
             sys.path.insert(0, directory)
             try:
-                app = VelaApp(
-                    enable_api=False, settings_module="missing_settings_for_test"
-                )
+                app = VelaApp(enable_api=False, settings_module="missing_settings_for_test")
                 with self.assertRaises(ModuleNotFoundError) as caught:
                     app.register_app("brokenapp")
-                self.assertEqual(
-                    caught.exception.name, "missing_dependency_inside_views_98765"
-                )
+                self.assertEqual(caught.exception.name, "missing_dependency_inside_views_98765")
             finally:
                 sys.path.remove(directory)
                 for name in tuple(sys.modules):
@@ -205,9 +199,7 @@ class DynamicImportSecurityTests(unittest.TestCase):
 
         with self.assertRaises(ConfigurationError):
             ApiServer(ApiRouter(), host="0.0.0.0", port=8000)
-        server = ApiServer(
-            ApiRouter(), host="0.0.0.0", port=8000, allow_remote=True
-        )
+        server = ApiServer(ApiRouter(), host="0.0.0.0", port=8000, allow_remote=True)
         self.assertTrue(server.allow_remote)
 
 

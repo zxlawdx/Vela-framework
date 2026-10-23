@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Plugins explicitamente ativados pela aplicação/build."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -51,21 +52,15 @@ class PluginManager:
             if metadata.enabled:
                 self._run(metadata.name, "build", hook, plan, continue_on_error)
         if include_entry_points:
-            points = sorted(
-                entry_points(group="vela.build_hooks"), key=lambda point: point.name
-            )
+            points = sorted(entry_points(group="vela.build_hooks"), key=lambda point: point.name)
             for point in points:
                 try:
                     hook = point.load()
                 except Exception as exc:
                     if continue_on_error:
-                        self.logger.exception(
-                            f"Plugin {point.name!r} falhou ao carregar: {exc}"
-                        )
+                        self.logger.exception(f"Plugin {point.name!r} falhou ao carregar: {exc}")
                         continue
-                    raise PluginError(
-                        f"Plugin {point.name!r} falhou ao carregar."
-                    ) from exc
+                    raise PluginError(f"Plugin {point.name!r} falhou ao carregar.") from exc
                 self._run(point.name, "build", hook, plan, continue_on_error)
         return plan
 
@@ -73,13 +68,9 @@ class PluginManager:
         try:
             callback(plan)
         except Exception as exc:
-            self.logger.exception(
-                f"Plugin {name!r}, hook {hook_name!r}, falhou: {exc}"
-            )
+            self.logger.exception(f"Plugin {name!r}, hook {hook_name!r}, falhou: {exc}")
             if not continue_on_error:
-                raise PluginError(
-                    f"Plugin {name!r} falhou no hook {hook_name!r}."
-                ) from exc
+                raise PluginError(f"Plugin {name!r} falhou no hook {hook_name!r}.") from exc
 
 
 _build_hooks = []

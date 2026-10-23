@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """OpenAPI básico e interface offline de testes."""
+
 from __future__ import annotations
 
 import inspect
@@ -34,7 +35,9 @@ def build_openapi(routes, prefix="/api"):
         method = route.method.lower()
         path = prefix + route.path
         handler = route.handler
-        summary = (inspect.getdoc(handler) or getattr(handler, "__name__", "handler")).splitlines()[0]
+        summary = (inspect.getdoc(handler) or getattr(handler, "__name__", "handler")).splitlines()[
+            0
+        ]
         operation = {
             "summary": summary,
             "operationId": getattr(handler, "__name__", "handler"),

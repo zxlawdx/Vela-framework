@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Composition root público do Vela Framework."""
+
 from __future__ import annotations
 
 import importlib
@@ -32,9 +33,7 @@ class VelaApp:
         self.logger = VelaLogger("app")
         self._config_loader = ConfigLoader(settings_module)
         self._settings = self._config_loader.load_module()
-        self.config = self._config_loader.load(
-            title=title, layout=layout, enable_api=enable_api
-        )
+        self.config = self._config_loader.load(title=title, layout=layout, enable_api=enable_api)
         self._config = self.config.to_dict()
         self.enable_api = enable_api
 
@@ -62,9 +61,7 @@ class VelaApp:
         self.lifecycle.on_shutdown(self.events.clear)
 
         if self.config.shell_mode == "http":
-            self.router.base_url = (
-                f"http://{self.config.api.host}:{self.config.api.port}"
-            )
+            self.router.base_url = f"http://{self.config.api.host}:{self.config.api.port}"
 
         self.logger.info(
             f"Vela configurado | title={self.config.title} "
@@ -76,9 +73,7 @@ class VelaApp:
     def _load_settings(self, module_path: str):
         return ConfigLoader(module_path).load_module()
 
-    def _build_config(
-        self, title: str | None = None, layout: dict | None = None
-    ) -> dict:
+    def _build_config(self, title: str | None = None, layout: dict | None = None) -> dict:
         return self._config_loader.load(
             title=title,
             layout=layout,

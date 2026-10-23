@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Ports mínimos do core; adapters padrão continuam Bottle/Waitress e pywebview."""
+
 from __future__ import annotations
 
 from typing import Protocol

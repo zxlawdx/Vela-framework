@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Registro de rotas HTTP com lookup/registro O(1) médio."""
+
 from __future__ import annotations
 
 import inspect

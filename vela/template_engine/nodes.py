@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """AST e renderer do template engine V2."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -34,7 +35,9 @@ def resolve_value(expression: str, context: Mapping[str, Any]) -> Any:
 
 
 class Node(Protocol):
-    def render(self, context: Mapping[str, Any], env: RenderEnvironment, parts: list[str]) -> None: ...
+    def render(
+        self, context: Mapping[str, Any], env: RenderEnvironment, parts: list[str]
+    ) -> None: ...
 
 
 @dataclass(frozen=True, slots=True)
