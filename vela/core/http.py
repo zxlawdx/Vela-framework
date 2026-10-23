@@ -19,6 +19,7 @@ class Request:
     headers: Mapping[str, str]
     json: Any = None
     body: bytes | None = None
+    path_params: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -30,8 +31,6 @@ class Response:
 
 
 class ResponseEncoder:
-    """Converte respostas Vela em bytes/strings aceitos pelo Bottle."""
-
     @classmethod
     def to_jsonable(cls, value: Any) -> Any:
         if value is None or isinstance(value, (str, int, float, bool)):

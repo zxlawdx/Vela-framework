@@ -11,13 +11,6 @@ from vela.core.api_router import ApiRouter
 
 
 class ApiFacade:
-    """Mantém ergonomia global sem compartilhar estado mutável entre VelaApps.
-
-    Decorators executados fora do contexto de uma aplicação são guardados em
-    um blueprint legado. Cada ``VelaApp`` clona esse blueprint no startup.
-    Durante ``register_app`` o facade é associado ao router daquela aplicação.
-    """
-
     def __init__(self):
         self._blueprint = ApiRouter()
         self._current: ContextVar[ApiRouter | None] = ContextVar("vela_api_router", default=None)
@@ -43,22 +36,14 @@ class ApiFacade:
     def add_route(self, method: str, path: str, handler: Callable[..., Any]):
         return self._target().add_route(method, path, handler)
 
-    def get(self, path: str):
-        return self._target().get(path)
-
-    def post(self, path: str):
-        return self._target().post(path)
-
-    def put(self, path: str):
-        return self._target().put(path)
-
-    def delete(self, path: str):
-        return self._target().delete(path)
-
-    def patch(self, path: str):
-        return self._target().patch(path)
+    def get(self, path: str): return self._target().get(path)
+    def head(self, path: str): return self._target().head(path)
+    def post(self, path: str): return self._target().post(path)
+    def put(self, path: str): return self._target().put(path)
+    def delete(self, path: str): return self._target().delete(path)
+    def patch(self, path: str): return self._target().patch(path)
+    def options(self, path: str): return self._target().options(path)
 
 
 api = ApiFacade()
-
 __all__ = ["api", "ApiFacade"]
