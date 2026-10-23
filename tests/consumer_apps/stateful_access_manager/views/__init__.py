@@ -1,5 +1,6 @@
+from ..service import PROVIDER as PROVIDER
+from ..service import SESSION as SESSION
 from .dashboard import dashboard
-from ..service import SESSION, PROVIDER
 
 
 def register_routes(router):
