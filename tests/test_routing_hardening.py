@@ -58,13 +58,19 @@ class ApiRouterTests(unittest.TestCase):
     def test_methods_duplicate_replacement_and_order(self):
         router = ApiRouter()
         for method in ("GET", "POST", "PUT", "DELETE"):
-            handler = lambda method=method: {"method": method}
+
+            def handler(method=method):
+                return {"method": method}
+
             router.add_route(method, "/items", handler)
         self.assertEqual(
             [route.method for route in router.routes],
             ["GET", "POST", "PUT", "DELETE"],
         )
-        replacement = lambda: {"new": True}
+
+        def replacement():
+            return {"new": True}
+
         router.add_route("GET", "/items", replacement)
         self.assertEqual(len(router.routes), 4)
         self.assertIs(router.get_route("GET", "/items").handler, replacement)

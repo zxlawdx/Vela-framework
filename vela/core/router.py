@@ -120,15 +120,7 @@ class Router:
             raise ConfigurationError("layout de rota deve ser 'default' ou 'blank'.")
         route_name = name or path.lstrip("/") or "index"
         existing = self._routes.get(path)
-        logical_same_handler = bool(
-            existing
-            and getattr(existing.handler, "__module__", None)
-            == getattr(handler, "__module__", None)
-            and getattr(existing.handler, "__name__", None)
-            == getattr(handler, "__name__", None)
-            and existing.name == route_name
-        )
-        if existing and not (replace or logical_same_handler):
+        if existing and not replace:
             raise ConfigurationError(f"Rota duplicada para path {path!r}.")
         named = self._named.get(route_name)
         if named and named.path != path:

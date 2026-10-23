@@ -6,7 +6,6 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-
 LOG_DIR = Path.cwd() / "logs"
 LOG_FILE = LOG_DIR / f"vela_{datetime.now().strftime('%Y-%m-%d')}.log"
 

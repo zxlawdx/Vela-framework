@@ -5,11 +5,10 @@ import io
 import json
 import unittest
 from unittest.mock import patch
-
 from wsgiref.util import setup_testing_defaults
+
 from vela.core.api_router import ApiRouter
 from vela.core.api_server import ApiServer
-from vela.core.api_docs import build_openapi
 from vela.core.bridge import BaseBridge
 from vela.core.router import Router
 from vela.runtime.hotreload import HotReloadManager
