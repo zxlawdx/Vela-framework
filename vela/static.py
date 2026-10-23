@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -13,12 +14,18 @@ from urllib.parse import quote
 
 DEFAULT_RUNTIME_PREFIX = "/__vela__/static"
 MANIFEST_NAME = "manifest.json"
+_WINDOWS_ABSOLUTE_RE = re.compile(r"^[A-Za-z]:/")
 
 
 def _safe_relative(value: str | Path) -> Path:
     text = str(value).replace("\\", "/")
     candidate = Path(text)
-    if not text or candidate.is_absolute() or ".." in candidate.parts:
+    if (
+        not text
+        or candidate.is_absolute()
+        or _WINDOWS_ABSOLUTE_RE.match(text)
+        or ".." in candidate.parts
+    ):
         raise ValueError(f"Caminho static inválido: {value!r}")
     if any(part in ("", ".") for part in candidate.parts):
         candidate = Path(*[part for part in candidate.parts if part not in ("", ".")])
@@ -114,7 +121,11 @@ class AssetManifest:
         files: dict[str, str] = {}
         if base.exists():
             for path in sorted(base.rglob("*")):
-                if not path.is_file() or path.name == MANIFEST_NAME or "__pycache__" in path.parts:
+                if (
+                    not path.is_file()
+                    or path.name == MANIFEST_NAME
+                    or "__pycache__" in path.parts
+                ):
                     continue
                 files[path.relative_to(base).as_posix()] = _sha256(path)
         return cls(base, files)
