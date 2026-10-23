@@ -505,6 +505,21 @@ O Vela possui um template engine próprio com suporte a variáveis e loops.
 <p>Conectado como {{ usuario.nome }}</p>
 ```
 
+Valores interpolados por `{{ ... }}` são **escapados por padrão**, inclusive dentro de loops. Dados vindos de usuário não viram HTML/JavaScript executável apenas por serem colocados no contexto.
+
+Para HTML intencionalmente confiável, use o bypass explícito `mark_safe()`:
+
+```python
+from vela.template_engine import mark_safe
+
+context = {
+    "conteudo": mark_safe("<strong>HTML confiável</strong>"),
+}
+```
+
+> [!WARNING]
+> `mark_safe()` define uma fronteira de confiança: não passe dados de usuário, respostas externas ou conteúdo não validado. Veja [Security Model](docs/SECURITY_MODEL.md) e [Architecture](docs/ARCHITECTURE.md).
+
 ### Loops
 
 ```html
