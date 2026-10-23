@@ -46,9 +46,7 @@ class DesktopWindow:
         if self.shell_mode == "file":
             return (CORE_DIR / "shell.html").as_uri()
         target_host = (
-            "127.0.0.1"
-            if self.host == "0.0.0.0"
-            else "::1" if self.host == "::" else self.host
+            "127.0.0.1" if self.host == "0.0.0.0" else "::1" if self.host == "::" else self.host
         )
         host_for_url = (
             f"[{target_host}]"
@@ -75,9 +73,7 @@ class DesktopWindow:
         window = self._window
 
         def on_loaded():
-            window.evaluate_js(
-                f"window.__VELA_ENTRY__ = {json.dumps(self.entry_route)};"
-            )
+            window.evaluate_js(f"window.__VELA_ENTRY__ = {json.dumps(self.entry_route)};")
 
         window.events.loaded += on_loaded
         if self.bridge and hasattr(self.bridge, "_attach_window"):
@@ -94,9 +90,7 @@ class DesktopWindow:
                 except (ValueError, OSError, TypeError):
                     icon_file = None
 
-        icon_arg = (
-            str(icon_file.resolve()) if icon_file and icon_file.is_file() else None
-        )
+        icon_arg = str(icon_file.resolve()) if icon_file and icon_file.is_file() else None
         gui = os.environ.get("VELA_GUI") or None
         webview.start(gui=gui, debug=self.debug, icon=icon_arg)
         self._window = None

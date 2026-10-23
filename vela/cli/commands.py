@@ -11,7 +11,6 @@ import sys
 from vela.config import is_missing_target
 from vela.log.logger import VelaLogger
 
-
 HELP_TEXT = """
 Vela Framework — manage.py
 
@@ -99,7 +98,12 @@ class CommandRunner:
         if not name.replace("_", "").isalnum() or name[0].isdigit():
             raise ValueError("Nome de app inválido; use identificador Python simples.")
         base = os.path.join("apps", name)
-        for path in (base, os.path.join(base, "views"), os.path.join(base, "templates"), os.path.join(base, "static")):
+        for path in (
+            base,
+            os.path.join(base, "views"),
+            os.path.join(base, "templates"),
+            os.path.join(base, "static"),
+        ):
             os.makedirs(path, exist_ok=True)
         self._write(os.path.join(base, "__init__.py"), "")
         self._write(
@@ -197,7 +201,9 @@ class CommandRunner:
         from vela.cli.build_report import write_build_report
 
         parser = argparse.ArgumentParser(prog="python manage.py buildapp")
-        parser.add_argument("--gui", choices=["auto", "qt6", "qt5", "gtk", "native"], default="auto")
+        parser.add_argument(
+            "--gui", choices=["auto", "qt6", "qt5", "gtk", "native"], default="auto"
+        )
         parser.add_argument("--icon", default="")
         parser.add_argument("--installer", action="store_true")
         parser.add_argument("--output", default="dist")
@@ -230,13 +236,19 @@ class CommandRunner:
         from vela.cli.doctor import diagnose, print_report, remedy
 
         parser = argparse.ArgumentParser(prog="python manage.py doctor")
-        parser.add_argument("--gui", choices=["auto", "qt6", "qt5", "gtk", "native"], default="auto")
+        parser.add_argument(
+            "--gui", choices=["auto", "qt6", "qt5", "gtk", "native"], default="auto"
+        )
         parser.add_argument("--json", action="store_true")
         parser.add_argument("--fix", action="store_true")
         parsed = parser.parse_args(args)
         checks = diagnose(backend=parsed.gui)
         if parsed.json:
-            print(json.dumps([dataclasses.asdict(item) for item in checks], ensure_ascii=False, indent=2))
+            print(
+                json.dumps(
+                    [dataclasses.asdict(item) for item in checks], ensure_ascii=False, indent=2
+                )
+            )
         else:
             print_report(checks)
         if parsed.fix:
@@ -254,7 +266,11 @@ class CommandRunner:
         parser.add_argument("--bundle", default=None)
         parser.add_argument("--scope", choices=["user", "system"], default="user")
         parsed = parser.parse_args(args)
-        bundle = Path(parsed.bundle) if parsed.bundle else Path.cwd() / "dist" / identity(read_settings(Path.cwd()))["slug"]
+        bundle = (
+            Path(parsed.bundle)
+            if parsed.bundle
+            else Path.cwd() / "dist" / identity(read_settings(Path.cwd()))["slug"]
+        )
         return install_bundle(bundle, parsed.scope)
 
     def cmd_uninstallapp(self, args):

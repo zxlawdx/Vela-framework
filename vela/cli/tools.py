@@ -55,11 +55,16 @@ def resolve_executable(
         path = Path(candidate)
         if not path.exists():
             continue
-        if windows and path.parent.name == ".bin" and path.suffix.lower() not in {
-            ".cmd",
-            ".exe",
-            ".bat",
-        }:
+        if (
+            windows
+            and path.parent.name == ".bin"
+            and path.suffix.lower()
+            not in {
+                ".cmd",
+                ".exe",
+                ".bat",
+            }
+        ):
             continue
         if windows or os.access(path, os.X_OK):
             return str(path)
@@ -69,6 +74,4 @@ def resolve_executable(
 def resolve_node_tool(
     name: str, *, project_root: str | Path | None = None, platform_name: str | None = None
 ) -> str | None:
-    return resolve_executable(
-        name, project_root=project_root, platform_name=platform_name
-    )
+    return resolve_executable(name, project_root=project_root, platform_name=platform_name)

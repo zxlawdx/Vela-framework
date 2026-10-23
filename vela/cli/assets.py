@@ -20,7 +20,9 @@ class AssetVerification:
     assets: list[str] = field(default_factory=list)
 
 
-def verify_assets(project_root: str | Path = ".", collected_root: str = "staticfiles") -> AssetVerification:
+def verify_assets(
+    project_root: str | Path = ".", collected_root: str = "staticfiles"
+) -> AssetVerification:
     root = Path(project_root).resolve()
     collected = (root / collected_root).resolve()
     errors: list[str] = []

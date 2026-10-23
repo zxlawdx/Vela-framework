@@ -49,7 +49,9 @@ class DirtyModuleRegistry:
                     item.reloadable = False
 
     def is_protected(self, name: str) -> bool:
-        return any(name == prefix or name.startswith(prefix + ".") for prefix in self._persistent_prefixes)
+        return any(
+            name == prefix or name.startswith(prefix + ".") for prefix in self._persistent_prefixes
+        )
 
     def track(self, module: ModuleType, *, reloadable: bool = True) -> None:
         filename = getattr(module, "__file__", None)
@@ -104,7 +106,11 @@ class HotReloadManager:
     def refresh(self) -> tuple[str, ...]:
         if not self.enabled:
             return ()
-        dirty = [item for item in self.registry.values() if item.reloadable and self.watcher.changed(item)]
+        dirty = [
+            item
+            for item in self.registry.values()
+            if item.reloadable and self.watcher.changed(item)
+        ]
         reloaded: list[str] = []
         for item in sorted(dirty, key=lambda value: value.name.count("."), reverse=True):
             module = sys.modules.get(item.name)

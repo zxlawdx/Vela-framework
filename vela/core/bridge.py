@@ -37,19 +37,52 @@ class BaseBridge:
 
     def navigate(self, path: str, params: str = "{}") -> dict[str, Any]:
         if not isinstance(path, str) or not path.startswith("/") or "\x00" in path:
-            return {"ok": False, "html": "", "layout": "default", "theme": None, "path": str(path), "status": 400, "error_id": None}
+            return {
+                "ok": False,
+                "html": "",
+                "layout": "default",
+                "theme": None,
+                "path": str(path),
+                "status": 400,
+                "error_id": None,
+            }
         if len(path) > 4096:
-            return {"ok": False, "html": "", "layout": "default", "theme": None, "path": path[:4096], "status": 414, "error_id": None}
+            return {
+                "ok": False,
+                "html": "",
+                "layout": "default",
+                "theme": None,
+                "path": path[:4096],
+                "status": 414,
+                "error_id": None,
+            }
         if isinstance(params, str) and len(params) > 2 * 1024 * 1024:
-            return {"ok": False, "html": "", "layout": "default", "theme": None, "path": path, "status": 413, "error_id": None}
+            return {
+                "ok": False,
+                "html": "",
+                "layout": "default",
+                "theme": None,
+                "path": path,
+                "status": 413,
+                "error_id": None,
+            }
         try:
             parsed_params = json.loads(params) if isinstance(params, str) else params
-            if not isinstance(parsed_params, dict): parsed_params = {}
+            if not isinstance(parsed_params, dict):
+                parsed_params = {}
         except (json.JSONDecodeError, TypeError, ValueError):
             parsed_params = {}
         self.hot_reload.refresh()
         result = self.router.resolve(path, parsed_params)
-        return {"ok": result.ok, "html": result.html, "layout": result.layout, "theme": result.theme, "path": path, "status": result.status, "error_id": result.error_id}
+        return {
+            "ok": result.ok,
+            "html": result.html,
+            "layout": result.layout,
+            "theme": result.theme,
+            "path": path,
+            "status": result.status,
+            "error_id": result.error_id,
+        }
 
     def get_routes(self) -> list:
         return self.router.get_sidebar_routes()
@@ -57,8 +90,10 @@ class BaseBridge:
     def url_for(self, name: str) -> dict:
         if not isinstance(name, str) or len(name) > 512:
             return {"ok": False, "path": None, "error": "Nome de rota inválido."}
-        try: return {"ok": True, "path": self.router.url_for(name)}
-        except KeyError as exc: return {"ok": False, "path": None, "error": str(exc)}
+        try:
+            return {"ok": True, "path": self.router.url_for(name)}
+        except KeyError as exc:
+            return {"ok": False, "path": None, "error": str(exc)}
 
     def capabilities(self) -> dict[str, object]:
         """Native capabilities only; browser/GPU features are probed in JS."""
@@ -76,15 +111,20 @@ class BaseBridge:
             ok = False
         return {"ok": bool(ok)}
 
-    def ping(self) -> str: return "pong"
+    def ping(self) -> str:
+        return "pong"
 
     def get_framework_info(self) -> dict:
         import vela
+
         return {"name": "Vela Framework", "version": vela.__version__}
 
     def log(self, level: str, message: str):
-        level = str(level).lower(); message = str(message)[:4000]
-        target = getattr(self.logger, level if level in {"info", "warning", "error", "debug"} else "debug")
+        level = str(level).lower()
+        message = str(message)[:4000]
+        target = getattr(
+            self.logger, level if level in {"info", "warning", "error", "debug"} else "debug"
+        )
         target(f"[JS] {message}")
 
     def emit(self, name, payload=None):

@@ -76,7 +76,9 @@ class PortableNodeToolTests(unittest.TestCase):
                 self.assertTrue(candidates[0].endswith("npx.cmd"))
                 self.assertFalse(any(Path(item).name == "npx" for item in candidates))
                 self.assertTrue(
-                    resolve_node_tool("npx", project_root=directory, platform_name="win32").endswith("npx.cmd")
+                    resolve_node_tool(
+                        "npx", project_root=directory, platform_name="win32"
+                    ).endswith("npx.cmd")
                 )
 
     def test_posix_candidates_use_executable_shim(self):
@@ -101,9 +103,10 @@ class PortableNodeToolTests(unittest.TestCase):
             fake = project / "tailwindcss.cmd"
             fake.write_text("", encoding="utf-8")
             completed = mock.Mock(returncode=0, stderr="")
-            with mock.patch("vela.cli.collectstatic.resolve_node_tool", return_value=str(fake)), mock.patch(
-                "vela.cli.collectstatic.subprocess.run", return_value=completed
-            ) as run:
+            with (
+                mock.patch("vela.cli.collectstatic.resolve_node_tool", return_value=str(fake)),
+                mock.patch("vela.cli.collectstatic.subprocess.run", return_value=completed) as run,
+            ):
                 with mock.patch.object(Path, "stat") as stat:
                     stat.return_value.st_size = 0
                     self.assertTrue(

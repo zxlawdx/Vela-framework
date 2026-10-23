@@ -3,7 +3,6 @@ import re
 import unittest
 from pathlib import Path
 
-
 SHELL = Path(__file__).resolve().parents[1] / "vela" / "core" / "shell.html"
 
 

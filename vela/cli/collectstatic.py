@@ -45,7 +45,17 @@ def _file_hash(path: str) -> str:
 
 def _find_template_files(project_root: str) -> list[str]:
     found: list[str] = []
-    skip = {"node_modules", "venv", ".venv", "staticfiles", ".vela-build", "__pycache__", ".git", "dist", "build"}
+    skip = {
+        "node_modules",
+        "venv",
+        ".venv",
+        "staticfiles",
+        ".vela-build",
+        "__pycache__",
+        ".git",
+        "dist",
+        "build",
+    }
     for root, dirs, files in os.walk(project_root):
         dirs[:] = [directory for directory in dirs if directory not in skip]
         for filename in files:

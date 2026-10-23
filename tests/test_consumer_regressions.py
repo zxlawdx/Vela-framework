@@ -16,7 +16,8 @@ class ConsumerRegressionTests(unittest.TestCase):
 
     def test_dfd_manifest_auto_registers_page_and_api_without_manual_import(self):
         sys.modules.pop("tests.consumer_apps.minimal_dfd.api", None)
-        app = self.make_app(); app.register_app(MinimalDFDConfig)
+        app = self.make_app()
+        app.register_app(MinimalDFDConfig)
         self.assertTrue(app.router.resolve("/dfd").ok)
         route = app.api_router.get_route("GET", "/dfd/status")
         self.assertIsNotNone(route)
@@ -24,22 +25,29 @@ class ConsumerRegressionTests(unittest.TestCase):
         app.stop()
 
     def test_access_manager_stateful_modules_are_persistent(self):
-        app = self.make_app(); app.register_app(StatefulAccessManagerConfig)
+        app = self.make_app()
+        app.register_app(StatefulAccessManagerConfig)
         from tests.consumer_apps.stateful_access_manager import service
-        session = service.SESSION; provider = service.PROVIDER
+
+        session = service.SESSION
+        provider = service.PROVIDER
         items = {item.name: item for item in app.hot_reload.registry.values()}
         self.assertIn("tests.consumer_apps.stateful_access_manager.service", items)
         self.assertFalse(items["tests.consumer_apps.stateful_access_manager.service"].reloadable)
         self.assertIn("tests.consumer_apps.stateful_access_manager.views.dashboard", items)
-        self.assertTrue(items["tests.consumer_apps.stateful_access_manager.views.dashboard"].reloadable)
-        self.assertIs(service.SESSION, session); self.assertIs(service.PROVIDER, provider)
+        self.assertTrue(
+            items["tests.consumer_apps.stateful_access_manager.views.dashboard"].reloadable
+        )
+        self.assertIs(service.SESSION, session)
+        self.assertIs(service.PROVIDER, provider)
         self.assertEqual(service.Provider.instances, 1)
         page = app.router.resolve("/access")
         self.assertIn("<canvas", page.html)
         app.stop()
 
     def test_open_doc_fixture_keeps_editor_selection_canvas_and_api(self):
-        app = self.make_app(); app.register_app(DocumentEditorConfig)
+        app = self.make_app()
+        app.register_app(DocumentEditorConfig)
         page = app.router.resolve("/editor")
         self.assertTrue(page.ok)
         self.assertIn('contenteditable="true"', page.html)
@@ -52,8 +60,11 @@ class ConsumerRegressionTests(unittest.TestCase):
         app.stop()
 
     def test_stop_without_run_is_idempotent(self):
-        app = self.make_app(); app.stop(); app.stop()
+        app = self.make_app()
+        app.stop()
+        app.stop()
         self.assertEqual(app.lifecycle.state, LifecycleState.STOPPED)
 
 
-if __name__ == "__main__": unittest.main()
+if __name__ == "__main__":
+    unittest.main()

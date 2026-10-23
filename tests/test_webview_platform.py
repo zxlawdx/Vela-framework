@@ -9,8 +9,13 @@ from vela.platform import ClipboardService, PlatformServices
 
 class FakeClipboard:
     available = True
-    def __init__(self): self.values = []
-    def write_text(self, text): self.values.append(text); return True
+
+    def __init__(self):
+        self.values = []
+
+    def write_text(self, text):
+        self.values.append(text)
+        return True
 
 
 class WebViewPlatformRegressionTests(unittest.TestCase):
@@ -36,7 +41,13 @@ class WebViewPlatformRegressionTests(unittest.TestCase):
     def test_linux_clipboard_subprocess_is_shell_false(self):
         service = ClipboardService(platform_name="linux")
         completed = mock.Mock(returncode=0)
-        with mock.patch("vela.platform.shutil.which", side_effect=lambda name: "/usr/bin/wl-copy" if name == "wl-copy" else None), mock.patch("vela.platform.subprocess.run", return_value=completed) as run:
+        with (
+            mock.patch(
+                "vela.platform.shutil.which",
+                side_effect=lambda name: "/usr/bin/wl-copy" if name == "wl-copy" else None,
+            ),
+            mock.patch("vela.platform.subprocess.run", return_value=completed) as run,
+        ):
             self.assertTrue(service.write_text("hello"))
         self.assertEqual(run.call_args.args[0], ["wl-copy"])
         self.assertFalse(run.call_args.kwargs["shell"])
@@ -47,4 +58,5 @@ class WebViewPlatformRegressionTests(unittest.TestCase):
         self.assertFalse(result["ok"])
 
 
-if __name__ == "__main__": unittest.main()
+if __name__ == "__main__":
+    unittest.main()

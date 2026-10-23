@@ -19,7 +19,11 @@ def build_report(plan: dict, project_root: str | Path = ".") -> dict[str, object
     apps = []
     apps_root = root / "apps"
     if apps_root.is_dir():
-        apps = sorted(path.name for path in apps_root.iterdir() if path.is_dir() and (path / "__init__.py").exists())
+        apps = sorted(
+            path.name
+            for path in apps_root.iterdir()
+            if path.is_dir() and (path / "__init__.py").exists()
+        )
     assets = []
     manifest = root / "staticfiles" / "manifest.json"
     if manifest.is_file():
@@ -49,5 +53,7 @@ def write_build_report(plan: dict, project_root: str | Path = ".") -> Path:
         output = root / output
     output.mkdir(parents=True, exist_ok=True)
     target = output / "build-report.json"
-    target.write_text(json.dumps(build_report(plan, root), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    target.write_text(
+        json.dumps(build_report(plan, root), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     return target

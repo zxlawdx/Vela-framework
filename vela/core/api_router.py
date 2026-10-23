@@ -87,12 +87,26 @@ class ApiRouter:
         def decorator(func: Callable[..., Any]):
             self.add_route(method, path, func)
             return func
+
         return decorator
 
-    def get(self, path: str): return self._decorator("GET", path)
-    def head(self, path: str): return self._decorator("HEAD", path)
-    def post(self, path: str): return self._decorator("POST", path)
-    def put(self, path: str): return self._decorator("PUT", path)
-    def delete(self, path: str): return self._decorator("DELETE", path)
-    def patch(self, path: str): return self._decorator("PATCH", path)
-    def options(self, path: str): return self._decorator("OPTIONS", path)
+    def get(self, path: str):
+        return self._decorator("GET", path)
+
+    def head(self, path: str):
+        return self._decorator("HEAD", path)
+
+    def post(self, path: str):
+        return self._decorator("POST", path)
+
+    def put(self, path: str):
+        return self._decorator("PUT", path)
+
+    def delete(self, path: str):
+        return self._decorator("DELETE", path)
+
+    def patch(self, path: str):
+        return self._decorator("PATCH", path)
+
+    def options(self, path: str):
+        return self._decorator("OPTIONS", path)

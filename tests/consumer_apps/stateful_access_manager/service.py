@@ -5,6 +5,7 @@ class Session:
 
 class Provider:
     instances = 0
+
     def __init__(self):
         type(self).instances += 1
 

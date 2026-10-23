@@ -54,7 +54,9 @@ class LifecycleManager:
         if target == self.state:
             return
         if target not in self._ALLOWED[self.state]:
-            raise RuntimeError(f"Transição de lifecycle inválida: {self.state.value} -> {target.value}")
+            raise RuntimeError(
+                f"Transição de lifecycle inválida: {self.state.value} -> {target.value}"
+            )
         self.state = target
         self.logger.debug(f"Lifecycle → {target.value}")
 
