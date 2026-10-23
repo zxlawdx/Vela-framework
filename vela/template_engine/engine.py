@@ -1,162 +1,136 @@
 # SPDX-License-Identifier: MPL-2.0
+"""Template engine Vela: AST compilada, autoescaping e cache bounded."""
+
+from __future__ import annotations
+
 import os
-import re
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import Any, Mapping, Sequence
+
+from vela.exceptions import TemplateError
+from vela.template_engine.nodes import Node
+from vela.template_engine.parser import parse
 
 
-# ─── Funções de resolução ─────────────────────────────────────────────────────
+@dataclass(frozen=True, slots=True)
+class _Environment:
+    router: Any
+    static_root: str
+    base_url: str | None
 
-def _resolve_url(name: str, router) -> str:
-    if router is None:
-        return f"/#url-not-resolved-{name}"
+    def resolve_url(self, name: str) -> str:
+        if self.router is None:
+            return f"/#url-not-resolved-{name}"
+        try:
+            return self.router.url_for(name)
+        except KeyError:
+            return f"/#route-{name}-not-found"
 
-    try:
-        return router.url_for(name)
-    except KeyError:
-        return f"/#route-{name}-not-found"
-
-
-def _resolve_static(path: str, static_root: str = "staticfiles", base_url: str = None) -> str:
-    if base_url:
-        return f"{base_url}/__vela__/static/{path}"
-    base = os.path.join(os.getcwd(), static_root)
-    full = os.path.join(base, path)
-    url = "file:///" + full.replace("\\", "/").lstrip("/")
-    return url
-
-
-# ─── Parser de expressões ─────────────────────────────────────────────────────
-
-def _evaluate_expression(expr: str, context: dict, router, static_root: str) -> str:
-    expr = expr.strip()
-
-    url_match = re.match(r"""^url\(\s*['"](.+?)['"]\s*\)$""", expr)
-    if url_match:
-        name = url_match.group(1)
-        return _resolve_url(name, router)
-
-    static_match = re.match(r"""^static\(\s*['"](.+?)['"]\s*\)$""", expr)
-    if static_match:
-        path = static_match.group(1)
-        return _resolve_static(path, static_root, base_url=context.get("__base_url__"))
-
-    if re.match(r"^\w+$", expr):
-        value = context.get(expr, "")
-        return str(value)
-
-    return f"<!-- vela: expressão não suportada: {expr} -->"
+    def resolve_static(self, path: str) -> str:
+        safe_path = _normalize_relative_asset(path)
+        if self.base_url:
+            return f"{self.base_url}/__vela__/static/{safe_path.as_posix()}"
+        root = (Path.cwd() / self.static_root).resolve()
+        target = (root / safe_path).resolve()
+        _ensure_within(target, (root,), "static")
+        return target.as_uri()
 
 
-# ─── Estruturas de template ───────────────────────────────────────────────────
+@dataclass(frozen=True, slots=True)
+class CompiledTemplate:
+    nodes: tuple[Node, ...]
 
-def _render_inline_variables(source: str, context: dict, router, static_root: str) -> str:
-    def replace_expr(match):
-        expr = match.group(1)
-        return _evaluate_expression(expr, context, router, static_root)
+    def render(
+        self,
+        context: Mapping[str, Any],
+        router=None,
+        static_root: str = "staticfiles",
+    ) -> str:
+        base_url = context.get("__base_url__") if isinstance(context, Mapping) else None
+        if not base_url and router is not None:
+            base_url = getattr(router, "base_url", None)
+        env = _Environment(router=router, static_root=static_root, base_url=base_url)
+        parts: list[str] = []
+        for node in self.nodes:
+            node.render(context, env, parts)
+        return "".join(parts)
 
-    return re.sub(r"\{\{\s*(.+?)\s*\}\}", replace_expr, source)
+
+def compile_template(source: str) -> CompiledTemplate:
+    return CompiledTemplate(parse(source))
 
 
-import re
+def _ensure_within(path: Path, roots: Sequence[Path], kind: str) -> Path:
+    for root in roots:
+        try:
+            path.relative_to(root)
+            return path
+        except ValueError:
+            continue
+    raise TemplateError(f"Caminho de {kind} fora das roots permitidas: {path}")
 
 
-def for_expressions(expr, context, router, static_root):
+def _normalize_relative_asset(value: str) -> Path:
+    candidate = Path(value)
+    if candidate.is_absolute() or ".." in candidate.parts:
+        raise TemplateError("Caminho de asset inválido.")
+    return candidate
 
-    pattern = re.compile(
-        r'\{\{\s*for\("([^"]+)"\)\s*\}\}(.*?)\{\{\s*endfor\s*\}\}',
-        re.DOTALL
-    )
 
-    matches = pattern.finditer(expr)
+def _template_roots(
+    template_roots: Sequence[str | os.PathLike[str]] | None,
+) -> tuple[Path, ...]:
+    roots = template_roots or (Path.cwd(),)
+    return tuple(Path(root).resolve() for root in roots)
 
-    result = expr
 
-    for match in matches:
+def _resolve_template_path(
+    template_path: str | os.PathLike[str],
+    template_roots: Sequence[str | os.PathLike[str]] | None = None,
+) -> Path:
+    roots = _template_roots(template_roots)
+    raw = Path(template_path)
+    candidate = raw.resolve() if raw.is_absolute() else (Path.cwd() / raw).resolve()
+    return _ensure_within(candidate, roots, "template")
 
-        full_match = match.group(0)
 
-        key = match.group(1)
+@lru_cache(maxsize=256)
+def _read_template_cached(path: str, mtime_ns: int, size: int) -> str:
+    return Path(path).read_text(encoding="utf-8")
 
-        block = match.group(2)
 
-        items = context.get(key, [])
+@lru_cache(maxsize=256)
+def _compile_template_cached(path: str, mtime_ns: int, size: int) -> CompiledTemplate:
+    source = _read_template_cached(path, mtime_ns, size)
+    return compile_template(source)
 
-        rendered_items = ""
 
-        for item in items:
+def clear_template_cache() -> None:
+    _read_template_cached.cache_clear()
+    _compile_template_cached.cache_clear()
 
-            rendered = block
 
-            if isinstance(item, dict):
-
-                for k, v in item.items():
-
-                    rendered = rendered.replace(
-                        f"{{{{ item.{k} }}}}",
-                        str(v)
-                    )
-
-            rendered_items += rendered
-
-        result = result.replace(full_match, rendered_items)
-
-    return result
-
-# ─── Renderizador principal ───────────────────────────────────────────────────
 def render_string(
     source: str,
-    context: dict = None,
+    context: Mapping[str, Any] | None = None,
     router=None,
     static_root: str = "staticfiles",
 ) -> str:
-    context = context or {}
-
-    # Injeta base_url do router no context para que static() gere URLs http://
-    if router and getattr(router, "base_url", None) and "__base_url__" not in context:
-        context["__base_url__"] = router.base_url
-
-    source = for_expressions(
-        source,
-        context,
-        router,
-        static_root
-    )
-
-    processed = _render_inline_variables(
-        source,
-        context,
-        router,
-        static_root
-    )
-
-    return processed
-
-@lru_cache(maxsize=256)
-def _read_template_cached(path, mtime_ns, size):
-    # Chave inclui estatisticas para invalidar automaticamente em dev.
-    return Path(path).read_text(encoding="utf-8")
+    return compile_template(source).render(context or {}, router=router, static_root=static_root)
 
 
 def render_template(
     template_path: str,
-    context: dict = None,
+    context: Mapping[str, Any] | None = None,
     router=None,
     static_root: str = "staticfiles",
+    template_roots: Sequence[str | os.PathLike[str]] | None = None,
 ) -> str:
-    context = context or {}
-
-    full_path = os.path.join(os.getcwd(), template_path)
-
-    if not os.path.exists(full_path):
-        raise FileNotFoundError(f"Template não encontrado: {full_path}")
-
-    metadata = os.stat(full_path)
-    source = _read_template_cached(full_path, metadata.st_mtime_ns, metadata.st_size)
-
-    return render_string(
-        source,
-        context=context,
-        router=router,
-        static_root=static_root
-    )
+    path = _resolve_template_path(template_path, template_roots)
+    if not path.is_file():
+        raise FileNotFoundError(f"Template não encontrado: {path}")
+    metadata = path.stat()
+    compiled = _compile_template_cached(str(path), metadata.st_mtime_ns, metadata.st_size)
+    return compiled.render(context or {}, router=router, static_root=static_root)

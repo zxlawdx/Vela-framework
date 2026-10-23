@@ -2,7 +2,7 @@ name: Vela CI and Linux build smoke
 
 on:
   push:
-    branches: [main, "feature/**", "fix/**"]
+    branches: [main, "feature/**", "fix/**", "refactor/**"]
   pull_request:
   workflow_dispatch:
 
@@ -14,8 +14,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.12"]
-    runs-on: ubuntu-latest
+        include:
+          - os: ubuntu-latest
+            python: "3.10"
+          - os: ubuntu-latest
+            python: "3.12"
+          - os: ubuntu-latest
+            python: "3.13"
+          - os: windows-latest
+            python: "3.12"
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,9 +34,60 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .
       - name: Compile Python
-        run: python -m compileall -q vela tests
+        run: python -m compileall -q vela tests benchmarks
       - name: Run tests
         run: python -m unittest discover -s tests -v
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install lint tools
+        run: python -m pip install "ruff>=0.1" "black>=23"
+      - name: Select changed Python files
+        run: git diff --name-only --diff-filter=ACMRT origin/main...HEAD -- '*.py' > /tmp/vela-python-files.txt
+      - name: Ruff
+        run: |
+          if [ -s /tmp/vela-python-files.txt ]; then
+            xargs -a /tmp/vela-python-files.txt ruff check
+          fi
+      - name: Black check
+        run: |
+          if [ -s /tmp/vela-python-files.txt ]; then
+            xargs -a /tmp/vela-python-files.txt black --check
+          fi
+
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package and audit tool
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . "pip-audit>=2.7"
+      - name: Audit installed dependencies
+        run: pip-audit --local --skip-editable
+
+  benchmark-smoke:
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install framework
+        run: python -m pip install -e .
+      - name: Run core benchmark suite
+        run: python benchmarks/bench_core.py
 
   linux-build-smoke:
     needs: tests
@@ -61,8 +120,6 @@ jobs:
       - name: Build Linux app with Vela
         run: |
           cd smokeapp
-          # Reproduz o runtime hook pyi_rth_pkgres que anteriormente
-          # falhava ao carregar jaraco no executavel do ZTE Automatic.
           python -c "import pkg_resources, jaraco.text, jaraco.functools, jaraco.context, more_itertools; print('legacy imports OK')"
           printf '\nimport pkg_resources  # regression test for pyi_rth_pkgres\n' >> config/wsgi.py
           python manage.py doctor --gui qt6
@@ -113,7 +170,7 @@ jobs:
           ./venv/bin/vela startproject example
           test -f example/config/settings.py
           test -f example/apps/home/templates/home.html
-          ./venv/bin/python -c "import vela; assert vela.__version__ == '0.2.2'"
+          ./venv/bin/python -c "import vela; assert vela.__version__ == '0.2.2'; from vela import VelaApp"
           cd example
           ../venv/bin/python manage.py help | grep -F "init-process:instalation"
       - uses: actions/upload-artifact@v4

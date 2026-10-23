@@ -1,12 +1,25 @@
 # SPDX-License-Identifier: MPL-2.0
-from bottle import Bottle, request, response, run, static_file
-from threading import Thread
-from pathlib import Path
-from vela.core.api_docs import build_openapi, DOCS_HTML
+"""Adapter HTTP Bottle/Waitress do Vela."""
+
+from __future__ import annotations
+
 import inspect
+import ipaddress
 import json
 import socket
 import time
+import warnings
+from html import escape
+from pathlib import Path
+from threading import Thread
+from uuid import uuid4
+
+from bottle import Bottle, request, response, run, static_file
+
+from vela.core.api_docs import DOCS_HTML, build_openapi
+from vela.core.http import Request, Response, ResponseEncoder
+from vela.exceptions import ApiValidationError, ConfigurationError
+from vela.log.logger import VelaLogger
 
 CORE_DIR = Path(__file__).resolve().parent
 
@@ -21,65 +34,67 @@ class ApiServer:
         debug=False,
         static_root="staticfiles",
         auto_port=True,
-        server='waitress',
+        server="waitress",
         docs_enabled=True,
         workers=4,
+        allow_remote=False,
+        cors_origins=(),
+        max_body_size=1_048_576,
     ):
         self.api_router = api_router
         self.server = server
-        self.docs_enabled = docs_enabled
+        self.docs_enabled = bool(docs_enabled)
         self.workers = max(1, int(workers))
         self.started_at = time.monotonic()
-        self.host = host
-
-        # Guarda a porta solicitada e resolve a porta efetiva antes
-        # de subir o Bottle. Se a porta estiver ocupada, o SO escolhe
-        # uma porta livre quando auto_port=True.
+        self.host = str(host)
         self.requested_port = int(port)
-        self.auto_port = auto_port
-        self.port = self.resolve_port(
-            host=self.host,
-            preferred_port=self.requested_port,
-            auto_port=self.auto_port,
-        )
-
-        self.prefix = prefix
-        self.debug = debug
-        self.static_root = static_root
+        self.auto_port = bool(auto_port) or self.requested_port == 0
+        self.port = self.requested_port
+        self.prefix = str(prefix)
+        self.debug = bool(debug)
+        self.static_root = str(static_root)
+        self.allow_remote = bool(allow_remote)
+        self.cors_origins = tuple(cors_origins or ())
+        self.max_body_size = int(max_body_size)
+        self.logger = VelaLogger("http")
         self.app = Bottle()
+        self._thread: Thread | None = None
+        self._waitress_server = None
+        self._routes_registered = False
 
+        if not self._is_loopback(self.host) and not self.allow_remote:
+            raise ConfigurationError(
+                f"API em {self.host!r} expõe o processo fora do loopback. "
+                "Defina API['allow_remote'] = True explicitamente para permitir."
+            )
+        if self.max_body_size <= 0:
+            raise ConfigurationError("max_body_size deve ser maior que zero.")
         self._register_internal_routes()
-
-        if debug == True:
+        if self.debug or self.cors_origins:
             self._enable_cors()
 
     @staticmethod
+    def _is_loopback(host: str) -> bool:
+        if host.lower() == "localhost":
+            return True
+        try:
+            return ipaddress.ip_address(host).is_loopback
+        except ValueError:
+            return False
+
+    @staticmethod
     def _socket_family(host: str):
-        """
-        Retorna a família de socket apropriada para o host configurado.
-        O Vela usa IPv4 por padrão, mas mantém suporte básico a IPv6.
-        """
         return socket.AF_INET6 if ":" in host else socket.AF_INET
 
     @classmethod
     def is_port_available(cls, host: str, port: int) -> bool:
-        """
-        Verifica se uma porta TCP pode ser usada pelo servidor local.
-
-        O teste é feito por bind, sem iniciar listener. Isso detecta
-        corretamente quando outra instância do Vela ou outro processo
-        já está usando a porta.
-        """
         try:
             port = int(port)
         except (TypeError, ValueError):
             return False
-
         if port <= 0 or port > 65535:
             return False
-
         family = cls._socket_family(host)
-
         try:
             with socket.socket(family, socket.SOCK_STREAM) as sock:
                 sock.bind((host, port))
@@ -88,28 +103,16 @@ class ApiServer:
             return False
 
     @classmethod
-    def resolve_port(
-        cls,
-        host: str,
-        preferred_port: int,
-        auto_port: bool = True,
-    ) -> int:
-        """
-        Resolve a porta que o servidor deve usar.
+    def resolve_port(cls, host: str, preferred_port: int, auto_port: bool = True) -> int:
+        """Compatibilidade: resolução consultiva de porta.
 
-        Fluxo:
-          1. Tenta manter a porta configurada.
-          2. Se estiver ocupada e auto_port=False, interrompe com erro claro.
-          3. Se estiver ocupada e auto_port=True, pede ao SO uma porta livre.
-
-        Usar bind(host, 0) delega ao sistema operacional a escolha de uma
-        porta efêmera disponível, evitando uma busca manual 8001, 8002, ...
+        O adapter Waitress não depende mais deste check para segurança contra
+        TOCTOU: ``start`` cria/binda o servidor real e faz fallback para port=0.
         """
         try:
             preferred_port = int(preferred_port)
-        except (TypeError, ValueError):
-            raise ValueError("A porta da API deve ser um número inteiro.")
-
+        except (TypeError, ValueError) as exc:
+            raise ValueError("A porta da API deve ser um número inteiro.") from exc
         if preferred_port == 0:
             auto_port = True
         elif cls.is_port_available(host, preferred_port):
@@ -119,102 +122,103 @@ class ApiServer:
                 f"A porta {preferred_port} já está em uso em {host}. "
                 "Defina API['auto_port'] = True para permitir fallback automático."
             )
-
         family = cls._socket_family(host)
-
         try:
             with socket.socket(family, socket.SOCK_STREAM) as sock:
                 sock.bind((host, 0))
                 return int(sock.getsockname()[1])
         except OSError as exc:
-            raise RuntimeError(
-                f"Não foi possível encontrar uma porta livre para o Vela em {host}."
-            ) from exc
+            raise RuntimeError(f"Não foi possível encontrar porta livre em {host}.") from exc
 
     def _register_internal_routes(self):
         @self.app.get(self.prefix + "/health")
         def health():
-            response.content_type = "application/json"
-            return json.dumps({"ok": True, "uptime_seconds": round(time.monotonic() - self.started_at, 2)})
+            response.content_type = "application/json; charset=utf-8"
+            return json.dumps(
+                {"ok": True, "uptime_seconds": round(time.monotonic() - self.started_at, 2)}
+            )
 
         @self.app.get(self.prefix + "/openapi.json")
         def openapi():
-            response.content_type = "application/json"
-            return json.dumps(build_openapi(self.api_router.routes, prefix=self.prefix),
-                              ensure_ascii=False)
+            response.content_type = "application/json; charset=utf-8"
+            return json.dumps(
+                build_openapi(self.api_router.routes, prefix=self.prefix), ensure_ascii=False
+            )
 
         if self.docs_enabled:
+
             @self.app.get(self.prefix + "/docs")
             def docs():
                 response.content_type = "text/html; charset=utf-8"
-                return DOCS_HTML.replace("__VELA_OPENAPI_PATH__",
-                                         self.prefix + "/openapi.json")
+                return DOCS_HTML.replace("__VELA_OPENAPI_PATH__", self.prefix + "/openapi.json")
 
         @self.app.get("/__vela__/shell")
         def serve_shell():
-            # Em builds offline, usa CSS ja compilado no lugar da CDN.
             css = Path.cwd() / self.static_root / "css" / "vela.bundle.css"
             if css.is_file():
                 import re
+
                 content = (CORE_DIR / "shell.html").read_text(encoding="utf-8")
                 content = content.replace(
                     '<script src="https://cdn.tailwindcss.com"></script>',
-                    '<link rel="stylesheet" href="/__vela__/static/css/vela.bundle.css">')
+                    '<link rel="stylesheet" href="/__vela__/static/css/vela.bundle.css">',
+                )
                 content = re.sub(
-                    r"<script>\s*tailwind\.config\s*=.*?</script>", "",
-                    content, flags=re.DOTALL, count=1)
+                    r"<script>\s*tailwind\.config\s*=.*?</script>",
+                    "",
+                    content,
+                    flags=re.DOTALL,
+                    count=1,
+                )
                 content = re.sub(
                     r"^\s*<link[^>]+(?:fonts\.googleapis|fonts\.gstatic)[^>]*>\s*$",
-                    "", content, flags=re.MULTILINE)
+                    "",
+                    content,
+                    flags=re.MULTILINE,
+                )
                 response.content_type = "text/html; charset=utf-8"
                 return content
             return static_file("shell.html", root=str(CORE_DIR))
 
         @self.app.get("/__vela__/static/<filepath:path>")
         def serve_static(filepath):
-            import os
-            root = os.path.join(os.getcwd(), self.static_root)
-            return static_file(filepath, root=root)
-
-    def wait_until_ready(self, timeout: float = 10.0):
-        """
-        Bloqueia até que o servidor HTTP esteja aceitando conexões TCP.
-
-        Resolve a race condition onde pywebview tenta carregar /__vela__/shell
-        antes do Bottle ter subido completamente na thread daemon.
-
-        Args:
-            timeout: Tempo máximo de espera em segundos (default: 10s).
-
-        Raises:
-            RuntimeError: Se o servidor não responder dentro do timeout.
-        """
-        deadline = time.time() + timeout
-
-        # 0.0.0.0/:: são endereços de bind, não destinos ideais para probe.
-        probe_host = self.host
-        if probe_host == "0.0.0.0":
-            probe_host = "127.0.0.1"
-        elif probe_host == "::":
-            probe_host = "::1"
-
-        while time.time() < deadline:
+            root = (Path.cwd() / self.static_root).resolve()
             try:
-                with socket.create_connection((probe_host, self.port), timeout=0.5):
-                    return True
-            except OSError:
-                time.sleep(0.05)
-        raise RuntimeError(
-            f"Servidor Vela não respondeu em {self.host}:{self.port} "
-            f"após {timeout}s. Verifique se a porta não está em uso."
-        )
+                target = self._safe_static_target(root, filepath)
+            except ValueError:
+                response.status = 404
+                return "Not found"
+            return static_file(str(target.relative_to(root)), root=str(root))
+
+    @staticmethod
+    def _safe_static_target(root: Path, filepath: str) -> Path:
+        relative = Path(str(filepath))
+        if relative.is_absolute() or ".." in relative.parts or "\x00" in str(filepath):
+            raise ValueError("Static path inválido.")
+        target = (root / relative).resolve()
+        try:
+            target.relative_to(root)
+        except ValueError as exc:
+            raise ValueError("Static path escapou da root.") from exc
+        return target
 
     def _enable_cors(self):
+        allowed = set(self.cors_origins)
+        if self.debug and self._is_loopback(self.host) and not allowed:
+            allowed.add("*")
+        if "*" in allowed and not self._is_loopback(self.host):
+            raise ConfigurationError("CORS '*' não é permitido em bind remoto.")
+
         @self.app.hook("after_request")
         def add_cors_headers():
-            response.headers["Access-Control-Allow-Origin"] = "*"
+            origin = request.headers.get("Origin")
+            if "*" in allowed:
+                response.headers["Access-Control-Allow-Origin"] = "*"
+            elif origin and origin in allowed:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Vary"] = "Origin"
             response.headers["Access-Control-Allow-Methods"] = (
-                "GET, POST, PUT, DELETE, OPTIONS"
+                "GET, POST, PUT, PATCH, DELETE, OPTIONS"
             )
             response.headers["Access-Control-Allow-Headers"] = (
                 "Origin, Accept, Content-Type, X-Requested-With"
@@ -225,405 +229,271 @@ class ApiServer:
             return ""
 
     def register_routes(self):
+        if self._routes_registered:
+            return
         for route in self.api_router.routes:
-            method = route["method"]
-            path = self.prefix + route["path"]
-            handler = route["handler"]
-
-            print(
-                f"[VELA API] Registrando rota: "
-                f"{method} {path}"
-            )
-
             self.app.route(
-                path,
-                method=method,
-                callback=self._wrap_handler(handler),
+                self.prefix + route.path,
+                method=route.method,
+                callback=self._wrap_handler(route),
             )
-
         if self.debug:
             self._register_debug_routes()
+        self._routes_registered = True
 
-    def _wrap_handler(self, handler):
-        # Metadados do handler sao calculados uma vez por rota.
-        params = inspect.signature(handler).parameters
-        argument = "context" if "context" in params else "data" if "data" in params else None
-        annotation = params[argument].annotation if argument else inspect.Signature.empty
+    def _wrap_handler(self, route):
+        binder = self._compile_binder(route)
 
         def wrapper():
             t0 = time.perf_counter()
-            if argument in ("data", "context"):
-                data = request.json or {}
-            if argument == "context":
-                context = {
-                    "query": dict(request.query),
-                    "headers": dict(request.headers),
-                    "body": data,
-                    "json": data,
-                    "method": request.method,
-                    "path": request.path,
-                }
-                result = handler(context)
-            elif argument == "data":
-                if hasattr(annotation, "model_validate"):
-                    result = handler(annotation.model_validate(data))
-                else:
-                    result = handler(data)
-            else:
-                result = handler()
-
-            if self.debug:
-                elapsed = (time.perf_counter() - t0) * 1000
-                print(f"[VELA PERF] {request.method} {request.path}: {elapsed:.1f} ms")
-
-            if hasattr(result, "status_code"):
-                return result
-
-            if isinstance(result, (dict, list)):
-                response.content_type = (
-                    "application/json; charset=utf-8"
+            try:
+                body, data = self._read_request_body()
+                request_model = Request(
+                    method=request.method,
+                    path=request.path,
+                    query=dict(request.query),
+                    headers=dict(request.headers),
+                    json=data,
+                    body=body,
                 )
-                return json.dumps(
-                    result,
-                    ensure_ascii=False
+                args = binder(request_model, data)
+                result = route.handler(*args)
+                return self._encode_response(result)
+            except ApiValidationError as exc:
+                return self._error_response(422, "validation_error", str(exc))
+            except ValueError as exc:
+                return self._error_response(400, "invalid_request", str(exc))
+            except Exception as exc:
+                error_id = "VELA-E-" + uuid4().hex[:8]
+                self.logger.exception(
+                    f"{error_id} exception em {request.method} {request.path}: {exc}"
                 )
-
-            if isinstance(result, str):
-                response.content_type = (
-                    "text/html; charset=utf-8"
-                )
-                return result
-
-            response.content_type = (
-                "application/json; charset=utf-8"
-            )
-
-            return json.dumps(
-                result,
-                ensure_ascii=False
-            )
+                message = str(exc) if self.debug else f"Erro interno. Código: {error_id}"
+                return self._error_response(500, "internal_error", message, error_id=error_id)
+            finally:
+                if self.debug:
+                    elapsed = (time.perf_counter() - t0) * 1000
+                    self.logger.debug(f"{request.method} {request.path}: {elapsed:.1f} ms")
 
         return wrapper
+
+    def _compile_binder(self, route):
+        params = tuple(route.signature.parameters.values())
+        if not params:
+            return lambda req, data: ()
+        if len(params) != 1:
+            raise ConfigurationError(
+                f"Handler {getattr(route.handler, '__name__', route.handler)!r} "
+                "deve receber 0 ou 1 parâmetro."
+            )
+        param = params[0]
+        annotation = route.type_hints.get(param.name, param.annotation)
+        if annotation is Request:
+            return lambda req, data: (req,)
+        if hasattr(annotation, "model_validate"):
+
+            def bind_model(req, data):
+                try:
+                    return (annotation.model_validate(data),)
+                except Exception as exc:
+                    raise ApiValidationError(str(exc)) from exc
+
+            return bind_model
+        if param.name == "context":
+            if self.debug:
+                warnings.warn(
+                    "Handlers `context` são legados; prefira `request: Request`.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+            return lambda req, data: (
+                {
+                    "query": dict(req.query),
+                    "headers": dict(req.headers),
+                    "body": data,
+                    "json": data,
+                    "method": req.method,
+                    "path": req.path,
+                },
+            )
+        if param.name == "data":
+            if self.debug:
+                warnings.warn(
+                    "Handlers `data` são legados; prefira `request: Request` ou modelo tipado.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+            return lambda req, data: (data,)
+        if annotation in (dict, inspect.Signature.empty):
+            return lambda req, data: (data,)
+        raise ConfigurationError(
+            f"Não foi possível vincular o parâmetro {param.name!r}; use Request ou modelo Pydantic."
+        )
+
+    def _read_request_body(self) -> tuple[bytes, object]:
+        length = request.content_length
+        if length is not None and length > self.max_body_size:
+            response.status = 413
+            raise ApiValidationError(f"Request body excede o limite de {self.max_body_size} bytes.")
+        if request.method in {"GET", "HEAD", "OPTIONS"}:
+            return b"", {}
+        raw = request.body.read(self.max_body_size + 1)
+        if len(raw) > self.max_body_size:
+            response.status = 413
+            raise ApiValidationError(f"Request body excede o limite de {self.max_body_size} bytes.")
+        if not raw:
+            return raw, {}
+        content_type = (request.content_type or "").lower()
+        if "json" not in content_type:
+            return raw, {}
+        try:
+            return raw, json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError("JSON inválido.") from exc
+
+    def _encode_response(self, result):
+        explicit = result if isinstance(result, Response) else None
+        body = explicit.body if explicit else result
+        if explicit:
+            response.status = explicit.status
+            for key, value in explicit.headers.items():
+                response.headers[str(key)] = str(value)
+            if explicit.content_type:
+                response.content_type = explicit.content_type
+        if isinstance(body, bytes):
+            if not explicit or not explicit.content_type:
+                response.content_type = "application/octet-stream"
+            return body
+        if isinstance(body, str):
+            if not explicit or not explicit.content_type:
+                response.content_type = "text/html; charset=utf-8"
+            return body
+        response.content_type = (
+            explicit.content_type
+            if explicit and explicit.content_type
+            else "application/json; charset=utf-8"
+        )
+        return ResponseEncoder.json_dumps(body)
+
+    def _error_response(
+        self,
+        status: int,
+        code: str,
+        message: str,
+        *,
+        error_id: str | None = None,
+    ):
+        if response.status_code == 413:
+            status = 413
+            code = "payload_too_large"
+        response.status = status
+        response.content_type = "application/json; charset=utf-8"
+        payload = {"ok": False, "error": {"code": code, "message": message}}
+        if error_id:
+            payload["error"]["id"] = error_id
+        return ResponseEncoder.json_dumps(payload)
 
     def _register_debug_routes(self):
         @self.app.get("/__vela__/api/routes")
         def debug_routes():
-            response.content_type = (
-                "text/html; charset=utf-8"
+            response.content_type = "text/html; charset=utf-8"
+            cards = []
+            for route in self.api_router.routes:
+                method = escape(route.method, quote=True)
+                path = escape(self.prefix + route.path, quote=True)
+                handler = escape(getattr(route.handler, "__name__", "handler"), quote=True)
+                cards.append(
+                    f'<section class="route"><strong>{method}</strong> '
+                    f"<code>{path}</code><small>handler: {handler}</small></section>"
+                )
+            routes_html = "".join(cards) or "<p>Nenhuma rota de API registrada.</p>"
+            return (
+                "<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'>"
+                "<title>Vela API Debug</title><style>body{font:14px system-ui;background:#0f172a;"
+                "color:#e2e8f0;padding:32px}.route{padding:14px;margin:10px 0;background:#1e293b;"
+                "border-radius:10px}.route code{margin-left:12px}.route small{display:block;"
+                "margin-top:8px;color:#94a3b8}</style></head><body><h1>Vela API Debug</h1>"
+                + routes_html
+                + "</body></html>"
             )
 
-            routes_html = ""
+    def _create_waitress_server(self, port: int):
+        from waitress import create_server
 
-            for idx, route in enumerate(self.api_router.routes):
-                method = route["method"]
-                path = self.prefix + route["path"]
-                handler = route["handler"].__name__
-                badge_class = method.lower()
+        return create_server(self.app, host=self.host, port=port, threads=self.workers)
 
-                routes_html += f"""
-                <div class="route-card">
-                    <div class="route-top">
-                        <span class="badge badge-{badge_class}">{method}</span>
-                        <code class="route-path">{path}</code>
-
-                        <button class="tester-toggle" onclick="toggleTester({idx})">
-                            Testar
-                        </button>
-                    </div>
-
-                    <div class="route-handler">
-                        handler: <code>{handler}</code>
-                    </div>
-
-                    <div class="tester" id="tester-{idx}">
-                        <label>Corpo da requisição JSON</label>
-
-                        <textarea id="body-{idx}" placeholder='{{"nome": "Cliente"}}'></textarea>
-
-                        <div class="tester-actions">
-                            <button class="btn-send" onclick="sendRequest('{method}', '{path}', {idx})">
-                                Enviar
-                            </button>
-
-                            <button class="btn-clear" onclick="clearResult({idx})">
-                                Limpar
-                            </button>
-
-                            <span class="status-pill" id="status-{idx}" style="display:none;"></span>
-                        </div>
-
-                        <pre class="result-block" id="result-{idx}"></pre>
-                    </div>
-                </div>
-                """
-
-            if not routes_html:
-                routes_html = """
-                <div class="empty">
-                    Nenhuma rota de API registrada.
-                </div>
-                """
-
-            return f"""<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <title>Vela API Debug</title>
-
-    <style>
-        * {{
-            box-sizing: border-box;
-        }}
-
-        body {{
-            margin: 0;
-            padding: 32px;
-            background: #0f172a;
-            color: #e2e8f0;
-            font-family: Arial, sans-serif;
-        }}
-
-        h1 {{
-            margin: 0 0 6px;
-            font-size: 28px;
-            color: #ffffff;
-        }}
-
-        p {{
-            margin: 0 0 24px;
-            color: #94a3b8;
-        }}
-
-        .route-card {{
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-        }}
-
-        .route-top {{
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }}
-
-        .badge {{
-            min-width: 70px;
-            text-align: center;
-            padding: 5px 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: bold;
-            border: 1px solid;
-        }}
-
-        .badge-get {{
-            background: #1e3a5f;
-            color: #93c5fd;
-            border-color: #2563eb;
-        }}
-
-        .badge-post {{
-            background: #14532d;
-            color: #86efac;
-            border-color: #16a34a;
-        }}
-
-        .badge-put {{
-            background: #451a03;
-            color: #fde68a;
-            border-color: #ca8a04;
-        }}
-
-        .badge-delete {{
-            background: #450a0a;
-            color: #fca5a5;
-            border-color: #dc2626;
-        }}
-
-        .route-path {{
-            flex: 1;
-            color: #e2e8f0;
-            font-family: monospace;
-            font-size: 14px;
-        }}
-
-        .route-handler {{
-            margin-top: 8px;
-            color: #94a3b8;
-            font-size: 13px;
-        }}
-
-        .tester-toggle {{
-            border: 1px solid #475569;
-            background: transparent;
-            color: #e2e8f0;
-            padding: 6px 10px;
-            border-radius: 8px;
-            cursor: pointer;
-        }}
-
-        .tester-toggle:hover {{
-            background: #334155;
-        }}
-
-        .tester {{
-            display: none;
-            margin-top: 14px;
-            padding-top: 14px;
-            border-top: 1px solid #334155;
-        }}
-
-        .tester.open {{
-            display: block;
-        }}
-
-        label {{
-            display: block;
-            margin-bottom: 6px;
-            color: #94a3b8;
-            font-size: 13px;
-        }}
-
-        textarea {{
-            width: 100%;
-            min-height: 100px;
-            background: #020617;
-            color: #e2e8f0;
-            border: 1px solid #334155;
-            border-radius: 8px;
-            padding: 10px;
-            font-family: monospace;
-            resize: vertical;
-        }}
-
-        .tester-actions {{
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 10px;
-        }}
-
-        .btn-send,
-        .btn-clear {{
-            border: none;
-            border-radius: 8px;
-            padding: 8px 12px;
-            color: white;
-            cursor: pointer;
-        }}
-
-        .btn-send {{
-            background: #2563eb;
-        }}
-
-        .btn-clear {{
-            background: #475569;
-        }}
-
-        .status-pill {{
-            padding: 4px 10px;
-            border-radius: 999px;
-            background: #020617;
-            border: 1px solid #334155;
-            font-size: 12px;
-        }}
-
-        .result-block {{
-            display: none;
-            margin-top: 10px;
-            padding: 12px;
-            background: #020617;
-            border: 1px solid #334155;
-            border-radius: 8px;
-            color: #e2e8f0;
-            white-space: pre-wrap;
-            overflow-x: auto;
-        }}
-
-        .empty {{
-            padding: 16px;
-            border: 1px dashed #475569;
-            border-radius: 12px;
-            color: #94a3b8;
-            background: #1e293b;
-        }}
-    </style>
-</head>
-
-<body>
-    <h1>Vela API Debug</h1>
-    <p>Rotas registradas na API do Vela</p>
-
-    {routes_html}
-
-    <script>
-        function toggleTester(idx) {{
-            const tester = document.getElementById("tester-" + idx);
-            tester.classList.toggle("open");
-        }}
-
-        function clearResult(idx) {{
-            const result = document.getElementById("result-" + idx);
-            const status = document.getElementById("status-" + idx);
-
-            result.style.display = "none";
-            result.textContent = "";
-
-            status.style.display = "none";
-            status.textContent = "";
-        }}
-
-        async function sendRequest(method, path, idx) {{
-            const bodyEl = document.getElementById("body-" + idx);
-            const result = document.getElementById("result-" + idx);
-            const status = document.getElementById("status-" + idx);
-
-            const options = {{
-                method: method,
-                headers: {{}}
-            }};
-
-            if (method !== "GET" && method !== "DELETE") {{
-                options.headers["Content-Type"] = "application/json";
-                options.body = bodyEl.value || "{{}}";
-            }}
-
-            try {{
-                const res = await fetch(path, options);
-                const text = await res.text();
-
-                status.style.display = "inline-block";
-                status.textContent = res.status;
-
-                result.style.display = "block";
-                result.textContent = text;
-            }} catch (err) {{
-                status.style.display = "inline-block";
-                status.textContent = "ERRO";
-
-                result.style.display = "block";
-                result.textContent = err.message;
-            }}
-        }}
-    </script>
-</body>
-</html>"""
+    @staticmethod
+    def _bound_port(server, fallback: int) -> int:
+        effective = getattr(server, "effective_port", None)
+        if effective:
+            return int(effective)
+        getter = getattr(server, "getsockname", None)
+        if callable(getter):
+            sockname = getter()
+            if isinstance(sockname, tuple) and len(sockname) >= 2:
+                return int(sockname[1])
+        adj = getattr(server, "adj", None)
+        if adj is not None and getattr(adj, "port", None):
+            return int(adj.port)
+        return int(fallback)
 
     def start(self):
         self.register_routes()
-
-        def serve():
-            if self.server == "waitress":
-                from waitress import serve as waitress_serve
-                waitress_serve(self.app, host=self.host, port=self.port,
-                               threads=self.workers)
-            elif self.server == "bottle":
-                run(app=self.app, host=self.host, port=self.port, quiet=True)
+        if self.server == "waitress":
+            desired = self.requested_port
+            if desired == 0:
+                self._waitress_server = self._create_waitress_server(0)
             else:
-                raise ValueError(f"Servidor desconhecido: {self.server}")
+                try:
+                    self._waitress_server = self._create_waitress_server(desired)
+                except OSError:
+                    if not self.auto_port:
+                        raise RuntimeError(f"A porta {desired} já está em uso em {self.host}.")
+                    self.logger.warning(
+                        f"Porta {desired} indisponível durante bind; solicitando porta dinâmica."
+                    )
+                    self._waitress_server = self._create_waitress_server(0)
+            self.port = self._bound_port(self._waitress_server, desired)
+            self._thread = Thread(
+                target=self._waitress_server.run,
+                daemon=True,
+                name="vela-http",
+            )
+            self._thread.start()
+            return self.port
 
-        thread = Thread(target=serve, daemon=True)
+        if self.server == "bottle":
+            self.port = self.resolve_port(self.host, self.requested_port, self.auto_port)
 
-        thread.start()
+            def serve():
+                run(app=self.app, host=self.host, port=self.port, quiet=True)
+
+            self._thread = Thread(target=serve, daemon=True, name="vela-http")
+            self._thread.start()
+            return self.port
+        raise ValueError(f"Servidor desconhecido: {self.server}")
+
+    def wait_until_ready(self, timeout: float = 10.0):
+        deadline = time.monotonic() + timeout
+        probe_host = (
+            "127.0.0.1" if self.host == "0.0.0.0" else "::1" if self.host == "::" else self.host
+        )
+        while time.monotonic() < deadline:
+            try:
+                with socket.create_connection((probe_host, self.port), timeout=0.5):
+                    return True
+            except OSError:
+                time.sleep(0.05)
+        raise RuntimeError(
+            f"Servidor Vela não respondeu em {self.host}:{self.port} após {timeout}s."
+        )
+
+    def stop(self):
+        server = self._waitress_server
+        self._waitress_server = None
+        if server is not None:
+            try:
+                server.close()
+            except Exception as exc:
+                self.logger.warning(f"Falha ao fechar Waitress: {exc}")
+        self._thread = None
