@@ -1,286 +1,177 @@
 # SPDX-License-Identifier: MPL-2.0
-"""
-vela.core.app
-=============
-Classe principal do framework Vela.
-"""
+"""Composition root público do Vela Framework."""
+from __future__ import annotations
 
 import importlib
-import os
 
 from vela.api import api
+from vela.config import ConfigLoader, is_missing_target
 from vela.core.api_server import ApiServer
+from vela.core.bridge import BaseBridge
 from vela.core.router import Router
 from vela.core.window import DesktopWindow
-from vela.core.bridge import BaseBridge
+from vela.events import EventBus
 from vela.log.logger import VelaLogger
+from vela.runtime.hotreload import HotReloadManager
+from vela.runtime.lifecycle import LifecycleManager
 
 
 class VelaApp:
-    """
-    Ponto de entrada principal do framework Vela.
-    """
+    """Facade pública; composição e lifecycle ficam explícitos internamente."""
 
     def __init__(
         self,
-        title: str = None,
-        layout: dict = None,
+        title: str | None = None,
+        layout: dict | None = None,
         settings_module: str = "config.settings",
         bridge_class=None,
         enable_api: bool = True,
+        window_backend_class=None,
+        http_server_class=None,
     ):
-        self.logger = VelaLogger("VelaApp")
-        self.router = Router()
+        self.logger = VelaLogger("app")
+        self._config_loader = ConfigLoader(settings_module)
+        self._settings = self._config_loader.load_module()
+        self.config = self._config_loader.load(
+            title=title, layout=layout, enable_api=enable_api
+        )
+        self._config = self.config.to_dict()
         self.enable_api = enable_api
 
-        self._settings = self._load_settings(settings_module)
-        self._config = self._build_config(title=title, layout=layout)
-        self.router.debug = self._config['debug']
+        self.router = Router()
+        self.router.debug = self.config.debug
+        self.api_router = api.new_router()
+        self.events = EventBus()
+        self.lifecycle = LifecycleManager()
+        self.hot_reload = HotReloadManager(enabled=self.config.debug)
+        self.hot_reload.add_reload_callback(self.router.refresh_module)
+        self.hot_reload.add_reload_callback(self.api_router.refresh_module)
+        self.hot_reload.set_reload_context(lambda: api.bind(self.api_router))
 
         bridge_cls = bridge_class or BaseBridge
-        self.bridge = bridge_cls(
-            router=self.router,
-            config=self._config,
-        )
+        self.bridge = bridge_cls(router=self.router, config=self._config)
+        if hasattr(self.bridge, "events"):
+            self.bridge.events = self.events
+        if hasattr(self.bridge, "hot_reload"):
+            self.bridge.hot_reload = self.hot_reload
 
+        self._window_backend_class = window_backend_class or DesktopWindow
+        self._http_server_class = http_server_class or ApiServer
         self.api_server = None
+        self._closed = False
+        self.lifecycle.on_shutdown(self.events.clear)
 
-        # Em modo http, informa o router da base URL para gerar static URLs corretas
-        if self._config.get("shell_mode", "http") == "http":
-            host = self._config["api"]["host"]
-            port = self._config["api"]["port"]
-            self.router.base_url = f"http://{host}:{port}"
+        if self.config.shell_mode == "http":
+            self.router.base_url = (
+                f"http://{self.config.api.host}:{self.config.api.port}"
+            )
 
         self.logger.info(
-            f"Vela iniciado | title={self._config['title']} "
-            f"| sidebar={self._config['layout']['sidebar']} "
-            f"| topbar={self._config['layout']['topbar']} "
-            f"| api={self._config['api']['enabled']}"
+            f"Vela configurado | title={self.config.title} "
+            f"| sidebar={self.config.layout.sidebar} "
+            f"| topbar={self.config.layout.topbar} "
+            f"| api={self.config.api.enabled}"
         )
-
-    # ─── Settings ────────────────────────────────────────────────────────
 
     def _load_settings(self, module_path: str):
-        """Carrega o módulo de configurações dinamicamente."""
+        return ConfigLoader(module_path).load_module()
+
+    def _build_config(
+        self, title: str | None = None, layout: dict | None = None
+    ) -> dict:
+        return self._config_loader.load(
+            title=title,
+            layout=layout,
+            enable_api=self.enable_api,
+        ).to_dict()
+
+    @staticmethod
+    def _import_optional(target: str):
         try:
-            settings = importlib.import_module(module_path)
-            self.logger.info(f"Settings carregadas: {module_path}")
-            return settings
-        except ModuleNotFoundError:
-            self.logger.warning(
-                f"Settings '{module_path}' não encontradas — usando defaults."
-            )
-            return None
-
-    def _build_config(self, title: str = None, layout: dict = None) -> dict:
-        """
-        Monta a config global mesclando defaults, settings e parâmetros diretos.
-        """
-        s = self._settings
-
-        config = {
-            "title": "Vela App",
-            "icon": "",
-
-            "layout": {
-                "sidebar": True,
-                "topbar": True,
-            },
-
-            "entry_route": "/",
-
-            "window": {
-                "width": 1280,
-                "height": 800,
-            },
-
-            "debug": True,
-
-            "api": {
-                "enabled": self.enable_api,
-                "host": "127.0.0.1",
-                "port": 8000,
-
-                # Se a porta configurada estiver ocupada, o Vela pede
-                # automaticamente ao SO outra porta TCP livre.
-                "auto_port": True,
-                "server": "waitress",
-                "workers": 4,
-                "docs_enabled": True,
-            },
-
-            # Modo de carregamento do shell: "http" (recomendado) ou "file" (legado)
-            "shell_mode": "http",
-            "static_root": "staticfiles",
-        }
-
-        if s:
-            if hasattr(s, "APP_TITLE"):
-                config["title"] = s.APP_TITLE
-            if hasattr(s, "APP_ICON"):
-                config["icon"] = s.APP_ICON
-
-            if hasattr(s, "ENTRY_ROUTE"):
-                config["entry_route"] = s.ENTRY_ROUTE
-
-            if hasattr(s, "WINDOW_WIDTH"):
-                config["window"]["width"] = s.WINDOW_WIDTH
-
-            if hasattr(s, "WINDOW_HEIGHT"):
-                config["window"]["height"] = s.WINDOW_HEIGHT
-
-            if hasattr(s, "DEBUG"):
-                config["debug"] = s.DEBUG
-
-            if hasattr(s, "LAYOUT"):
-                config["layout"].update(s.LAYOUT)
-
-            if hasattr(s, "API"):
-                config["api"].update(s.API)
-
-            if hasattr(s, "SHELL_MODE"):
-                config["shell_mode"] = s.SHELL_MODE
-
-            if hasattr(s, "STATIC_ROOT"):
-                config["static_root"] = s.STATIC_ROOT
-
-        if title:
-            config["title"] = title
-
-        if layout:
-            config["layout"].update(layout)
-
-        # Builds congelados nao devem executar hot reload ou abrir DevTools,
-        # ainda que o projeto tenha DEBUG=True durante desenvolvimento.
-        if os.environ.get("VELA_PRODUCTION") == "1":
-            config["debug"] = False
-
-        return config
-
-    # ─── Apps ────────────────────────────────────────────────────────────
+            return importlib.import_module(target)
+        except ModuleNotFoundError as exc:
+            if is_missing_target(exc, target):
+                return None
+            raise
 
     def register_app(self, app_module: str):
-        """
-        Registra um app no framework.
+        if not isinstance(app_module, str) or not app_module:
+            raise ValueError("app_module deve ser uma string não vazia.")
+        with api.bind(self.api_router):
+            views_module = self._import_optional(f"{app_module}.views")
+            if views_module is not None:
+                register_routes = getattr(views_module, "register_routes", None)
+                if callable(register_routes):
+                    register_routes(self.router)
+                    self.logger.info(f"Views do app {app_module!r} registradas.")
+                else:
+                    self.logger.warning(
+                        f"App {app_module!r} possui views, mas não register_routes()."
+                    )
 
-        Suporta:
-        - views.py
-        - views/__init__.py
-        - urls.py estilo Django
-        - api.py com decorators @api.get, @api.post
-        """
+            urls_module = self._import_optional(f"{app_module}.urls")
+            if urls_module is not None:
+                self.logger.info(f"URLs do app {app_module!r} carregadas.")
 
-        # ─── Carrega rotas de tela ───────────────────────────────────────────
+            api_module = self._import_optional(f"{app_module}.api")
+            if api_module is not None:
+                self.logger.info(f"API do app {app_module!r} carregada.")
 
-        try:
-            views_module = importlib.import_module(f"{app_module}.views")
-
-            if hasattr(views_module, "register_routes"):
-                views_module.register_routes(self.router)
-                self.logger.info(f"App '{app_module}' registrado.")
-            else:
-                self.logger.warning(
-                    f"App '{app_module}' possui views, mas não tem register_routes()."
-                )
-
-        except ModuleNotFoundError:
-            self.logger.info(f"App '{app_module}' não possui views.")
-
-        # ─── Carrega urls.py estilo Django ───────────────────────────────────
-
-        try:
-            importlib.import_module(f"{app_module}.urls")
-            self.logger.info(f"URLs do app '{app_module}' carregadas.")
-
-        except ModuleNotFoundError as e:
-            if e.name == f"{app_module}.urls":
-                self.logger.info(f"App '{app_module}' não possui urls.py.")
-            else:
-                self.logger.error(f"Erro ao carregar urls.py do app '{app_module}': {e}")
-                raise
-
-        # ─── Mantém suporte antigo a api.py com decorators ───────────────────
-
-        try:
-            importlib.import_module(f"{app_module}.api")
-            self.logger.info(f"API do app '{app_module}' carregada.")
-
-        except ModuleNotFoundError as e:
-            if e.name == f"{app_module}.api":
-                self.logger.info(f"App '{app_module}' não possui api.py.")
-            else:
-                self.logger.error(f"Erro ao carregar api.py do app '{app_module}': {e}")
-                raise
+        self.hot_reload.track_loaded_prefix(app_module)
+        return self
 
     def run(self):
-        """Inicia a API local (aguarda ela estar pronta) e a janela desktop."""
-
         c = self._config
-
-        if c["api"]["enabled"]:
-            requested_port = c["api"]["port"]
-
-            self.api_server = ApiServer(
-                api_router=api,
-                host=c["api"]["host"],
-                port=requested_port,
-                debug=c["debug"],
-                static_root=c.get("static_root", "staticfiles"),
-                auto_port=c["api"].get("auto_port", True),
-                server=c["api"].get("server", "waitress"),
-                docs_enabled=c["api"].get("docs_enabled", True),
-                workers=c["api"].get("workers", 4),
-            )
-
-            # A porta efetiva pode ser diferente da porta configurada.
-            # Atualizamos a config compartilhada, o router e a janela para
-            # todos usarem exatamente o mesmo servidor.
-            c["api"]["port"] = self.api_server.port
-
-            if c.get("shell_mode", "http") == "http":
-                self.router.base_url = (
-                    f"http://{c['api']['host']}:{c['api']['port']}"
+        self.lifecycle.startup()
+        try:
+            if c["api"]["enabled"]:
+                self.lifecycle.transition("api_start")
+                self.api_server = self._http_server_class(
+                    api_router=self.api_router,
+                    host=c["api"]["host"],
+                    port=c["api"]["port"],
+                    debug=c["debug"],
+                    static_root=c.get("static_root", "staticfiles"),
+                    auto_port=c["api"].get("auto_port", True),
+                    server=c["api"].get("server", "waitress"),
+                    docs_enabled=c["api"].get("docs_enabled", True),
+                    workers=c["api"].get("workers", 4),
+                    allow_remote=c["api"].get("allow_remote", False),
+                    cors_origins=c["api"].get("cors_origins", ()),
+                    max_body_size=c["api"].get("max_body_size", 1_048_576),
                 )
-
-            if self.api_server.port != requested_port:
-                self.logger.warning(
-                    f"Porta {requested_port} em uso. "
-                    f"Vela realocou a API para {self.api_server.port}."
-                )
-
-            self.logger.info(
-                f"Iniciando API local em "
-                f"http://{c['api']['host']}:{c['api']['port']}"
-            )
-
-            self.api_server.start()
-
-            # Aguarda o Bottle estar pronto antes de abrir a janela.
-            # Resolve a race condition: pywebview não deve tentar carregar
-            # /__vela__/shell antes do servidor HTTP aceitar conexões.
-            try:
+                requested_port = c["api"]["port"]
+                actual_port = self.api_server.start()
+                self.lifecycle.on_shutdown(self.api_server.stop)
+                c["api"]["port"] = actual_port
+                if c.get("shell_mode", "http") == "http":
+                    self.router.base_url = f"http://{c['api']['host']}:{actual_port}"
+                if actual_port != requested_port:
+                    self.logger.warning(
+                        f"Porta {requested_port} indisponível; API iniciou em {actual_port}."
+                    )
                 self.api_server.wait_until_ready()
-                self.logger.info("Servidor HTTP pronto.")
-            except RuntimeError as e:
-                self.logger.error(str(e))
-                raise
 
-        self.logger.info(
-            f"Iniciando janela: {c['title']} "
-            f"({c['window']['width']}x{c['window']['height']})"
-        )
+            self.lifecycle.transition("window_start")
+            window = self._window_backend_class(
+                title=c["title"],
+                width=c["window"]["width"],
+                height=c["window"]["height"],
+                bridge=self.bridge,
+                debug=c["debug"],
+                entry_route=c["entry_route"],
+                host=c["api"]["host"],
+                port=c["api"]["port"],
+                shell_mode=c.get("shell_mode", "http"),
+                icon=c.get("icon", ""),
+            )
+            self.lifecycle.transition("running")
+            window.run()
+        finally:
+            self.close()
 
-        window = DesktopWindow(
-            title=c["title"],
-            width=c["window"]["width"],
-            height=c["window"]["height"],
-            bridge=self.bridge,
-            debug=c["debug"],
-            entry_route=c["entry_route"],
-            host=c["api"]["host"],
-            port=c["api"]["port"],
-            shell_mode=c.get("shell_mode", "http"),
-            icon=c.get("icon", ""),
-        )
-
-        window.run()
+    def close(self):
+        if self._closed:
+            return
+        self._closed = True
+        self.lifecycle.shutdown()

@@ -1,27 +1,63 @@
 # SPDX-License-Identifier: MPL-2.0
-"""Pool de tarefas IO/CPU para evitar trabalho pesado no thread de interface."""
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from threading import RLock
+"""Pools de IO/CPU com backpressure e shutdown idempotente."""
+from __future__ import annotations
+
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from threading import BoundedSemaphore, RLock
+
+from vela.exceptions import JobQueueFullError
 
 
 class JobManager:
-    def __init__(self, io_workers=4, cpu_workers=0):
-        self.io_pool = ThreadPoolExecutor(max_workers=io_workers,
-                                          thread_name_prefix="vela-io")
-        self.cpu_pool = (ProcessPoolExecutor(max_workers=cpu_workers)
-                         if cpu_workers else None)
+    def __init__(
+        self,
+        io_workers: int = 4,
+        cpu_workers: int = 0,
+        max_pending_jobs: int | None = 128,
+        block_when_full: bool = False,
+    ):
+        if io_workers <= 0 or cpu_workers < 0:
+            raise ValueError("Quantidade de workers inválida.")
+        if max_pending_jobs is not None and max_pending_jobs <= 0:
+            raise ValueError("max_pending_jobs deve ser positivo ou None.")
+        self.io_pool = ThreadPoolExecutor(
+            max_workers=io_workers, thread_name_prefix="vela-io"
+        )
+        self.cpu_pool = (
+            ProcessPoolExecutor(max_workers=cpu_workers) if cpu_workers else None
+        )
         self._lock = RLock()
         self._closed = False
+        self._block_when_full = bool(block_when_full)
+        self._slots = BoundedSemaphore(max_pending_jobs) if max_pending_jobs else None
 
     def submit(self, callback, *args, mode="io", on_done=None, **kwargs):
-        """Callbacks de termino rodam em worker; GUI deve agendar no UI thread."""
         with self._lock:
             if self._closed:
-                raise RuntimeError("JobManager ja foi encerrado")
-            pool = self.io_pool if mode == "io" else self.cpu_pool if mode == "cpu" else None
+                raise RuntimeError("JobManager já foi encerrado.")
+            pool = (
+                self.io_pool
+                if mode == "io"
+                else self.cpu_pool
+                if mode == "cpu"
+                else None
+            )
             if pool is None:
-                raise ValueError("Modo invalido ou CPU pool nao habilitado")
-            future = pool.submit(callback, *args, **kwargs)
+                raise ValueError("Modo inválido ou CPU pool não habilitado.")
+            if self._slots is not None and not self._slots.acquire(
+                blocking=self._block_when_full
+            ):
+                raise JobQueueFullError(
+                    "Fila de jobs do Vela atingiu o limite configurado."
+                )
+            try:
+                future = pool.submit(callback, *args, **kwargs)
+            except Exception:
+                if self._slots is not None:
+                    self._slots.release()
+                raise
+            if self._slots is not None:
+                future.add_done_callback(lambda _: self._slots.release())
             if on_done:
                 future.add_done_callback(on_done)
             return future
