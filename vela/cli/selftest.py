@@ -47,9 +47,7 @@ def run_self_test() -> dict[str, object]:
     port = server.start()
     try:
         server.wait_until_ready(timeout=2)
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{port}/api/health", timeout=2
-        ) as response:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=2) as response:
             checks["http"] = json.loads(response.read())["ok"] is True
         with urllib.request.urlopen(
             f"http://127.0.0.1:{port}/__vela__/shell", timeout=2

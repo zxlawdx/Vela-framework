@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
-import json
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,8 +7,8 @@ from unittest import mock
 
 from vela.cli.assets import verify_assets
 from vela.cli.build_report import build_report
-from vela.cli.doctor import diagnose
 from vela.cli.collectstatic import collect_static
+from vela.cli.doctor import diagnose
 
 
 class AssetVerificationTests(unittest.TestCase):

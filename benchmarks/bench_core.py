@@ -95,9 +95,7 @@ def benchmark_app_manifest_registration():
 
 def benchmark_static_url():
     resolver = StaticResolver.for_project(".")
-    return samples(
-        lambda: resolver.url("documents/fonts/editor font.woff2"), repeat=1000
-    )
+    return samples(lambda: resolver.url("documents/fonts/editor font.woff2"), repeat=1000)
 
 
 def benchmark_template_parse():

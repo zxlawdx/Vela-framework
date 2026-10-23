@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from vela.static import AssetManifest, MANIFEST_NAME
+from vela.static import MANIFEST_NAME, AssetManifest
 
 _REMOTE_ASSET = re.compile(r"<(?:script|link)[^>]+https?://", re.IGNORECASE)
 

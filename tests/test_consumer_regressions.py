@@ -3,11 +3,11 @@ import sys
 import unittest
 from pathlib import Path
 
-from vela.core.app import VelaApp
-from vela.runtime.lifecycle import LifecycleState
+from tests.consumer_apps.document_editor.appconfig import DocumentEditorConfig
 from tests.consumer_apps.minimal_dfd.appconfig import MinimalDFDConfig
 from tests.consumer_apps.stateful_access_manager.appconfig import StatefulAccessManagerConfig
-from tests.consumer_apps.document_editor.appconfig import DocumentEditorConfig
+from vela.core.app import VelaApp
+from vela.runtime.lifecycle import LifecycleState
 
 
 class ConsumerRegressionTests(unittest.TestCase):

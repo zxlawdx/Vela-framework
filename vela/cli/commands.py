@@ -6,7 +6,6 @@ from __future__ import annotations
 import importlib
 import json
 import os
-import sys
 
 from vela.config import is_missing_target
 from vela.log.logger import VelaLogger
