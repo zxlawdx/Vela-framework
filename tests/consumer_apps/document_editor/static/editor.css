@@ -1,0 +1,3 @@
+#editor-host { background: white; overflow: auto; }
+#editor, .textLayer { user-select: text; -webkit-user-select: text; }
+#pdf-canvas { width: 100%; }

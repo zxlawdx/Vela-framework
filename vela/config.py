@@ -39,6 +39,7 @@ class ApiConfig:
     enabled: bool = True
     host: str = "127.0.0.1"
     port: int = 8000
+    prefix: str = "/api"
     auto_port: bool = True
     server: str = "waitress"
     workers: int = 4
@@ -52,12 +53,22 @@ class ApiConfig:
             raise ConfigurationError("API.host não pode ser vazio.")
         if not 0 <= int(self.port) <= 65535:
             raise ConfigurationError("API.port deve estar entre 0 e 65535.")
+        if not isinstance(self.prefix, str) or not self.prefix.startswith("/"):
+            raise ConfigurationError("API.prefix deve iniciar por '/'.")
+        if self.prefix != "/" and self.prefix.endswith("/"):
+            raise ConfigurationError("API.prefix não deve terminar com '/'.")
         if int(self.workers) <= 0:
             raise ConfigurationError("API.workers deve ser maior que zero.")
         if self.server not in {"waitress", "bottle"}:
             raise ConfigurationError("API.server deve ser 'waitress' ou 'bottle'.")
         if int(self.max_body_size) <= 0:
             raise ConfigurationError("API.max_body_size deve ser maior que zero.")
+
+
+@dataclass(frozen=True, slots=True)
+class StaticConfig:
+    collected_root: str = "staticfiles"
+    runtime_prefix: str = "/__vela__/static"
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,6 +128,7 @@ class ConfigLoader:
             "enabled": enable_api,
             "host": "127.0.0.1",
             "port": 8000,
+            "prefix": "/api",
             "auto_port": True,
             "server": "waitress",
             "workers": 4,

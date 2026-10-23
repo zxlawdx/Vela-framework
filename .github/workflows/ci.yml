@@ -1,4 +1,4 @@
-name: Vela CI and Linux build smoke
+name: Vela CI and cross-platform regression smoke
 
 on:
   push:
@@ -29,14 +29,36 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - name: Install framework
+      - uses: actions/setup-node@v4
+        if: runner.os == 'Windows'
+        with:
+          node-version: "22"
+      - name: Install framework and test tools
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e .
+          python -m pip install -e ".[dev]"
       - name: Compile Python
         run: python -m compileall -q vela tests benchmarks
-      - name: Run tests
-        run: python -m unittest discover -s tests -v
+      - name: Run pytest suite
+        run: python -m pytest -q
+      - name: Real Windows Node launcher regression
+        if: runner.os == 'Windows'
+        run: >-
+          python -c "from vela.cli.tools import resolve_node_tool; import subprocess;
+          p=resolve_node_tool('npx'); print('resolved npx:', p);
+          assert p and p.lower().endswith(('.cmd','.exe','.bat')), p;
+          subprocess.run([p, '--version'], check=True, shell=False)"
+      - name: Real Windows collectstatic smoke
+        if: runner.os == 'Windows'
+        run: >-
+          python -c "import os,tempfile; from pathlib import Path;
+          from vela.cli.collectstatic import collect_static;
+          root=Path(tempfile.mkdtemp()); source=root/'apps'/'demo'/'static';
+          source.mkdir(parents=True); (source/'app.js').write_text('ok', encoding='utf-8');
+          os.chdir(root); result=collect_static(skip_tailwind=True, verbose=False);
+          assert result['errors']==0, result;
+          assert (root/'staticfiles'/'demo'/'app.js').is_file();
+          assert (root/'staticfiles'/'manifest.json').is_file()"
 
   lint:
     runs-on: ubuntu-latest
@@ -95,6 +117,7 @@ jobs:
     env:
       QT_API: pyqt6
       PYWEBVIEW_GUI: qt
+      VELA_GUI: qt6
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -117,6 +140,12 @@ jobs:
           python -m venv --system-site-packages /tmp/vela-shared
           /tmp/vela-isolated/bin/python -c "from vela.cli.build import linux_venv_info; x=linux_venv_info(); assert x['active'] and not x['system_site_packages'], x"
           /tmp/vela-shared/bin/python -c "from vela.cli.build import linux_venv_info; x=linux_venv_info(); assert x['active'] and x['system_site_packages'], x"
+      - name: Verify project assets and runtime self-test
+        run: |
+          cd smokeapp
+          python manage.py collectstatic --no-tailwind
+          python manage.py assets verify
+          python manage.py self-test
       - name: Build Linux app with Vela
         run: |
           cd smokeapp
@@ -124,6 +153,7 @@ jobs:
           printf '\nimport pkg_resources  # regression test for pyi_rth_pkgres\n' >> config/wsgi.py
           python manage.py doctor --gui qt6
           python manage.py buildapp --gui qt6 --installer
+          test -f dist/build-report.json
           test -f dist/Meu-App-Vela/Meu-App-Vela
           ./dist/Meu-App-Vela/Meu-App-Vela --self-test
           test -f dist/Meu-App-Vela/Instalar.sh

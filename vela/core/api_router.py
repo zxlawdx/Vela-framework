@@ -11,6 +11,8 @@ from typing import Any, Callable, get_type_hints
 from vela.exceptions import ConfigurationError
 from vela.log.logger import VelaLogger
 
+SUPPORTED_METHODS = {"GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"}
+
 
 @dataclass(slots=True)
 class ApiRoute(Mapping[str, Any]):
@@ -50,7 +52,7 @@ class ApiRouter:
 
     def add_route(self, method: str, path: str, handler: Callable[..., Any]) -> ApiRoute:
         method = str(method).upper()
-        if method not in {"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"}:
+        if method not in SUPPORTED_METHODS:
             raise ConfigurationError(f"Método HTTP não suportado: {method!r}.")
         if not isinstance(path, str) or not path.startswith("/") or "\x00" in path:
             raise ConfigurationError("API path deve iniciar por '/'.")
@@ -91,6 +93,9 @@ class ApiRouter:
     def get(self, path: str):
         return self._decorator("GET", path)
 
+    def head(self, path: str):
+        return self._decorator("HEAD", path)
+
     def post(self, path: str):
         return self._decorator("POST", path)
 
@@ -102,3 +107,6 @@ class ApiRouter:
 
     def patch(self, path: str):
         return self._decorator("PATCH", path)
+
+    def options(self, path: str):
+        return self._decorator("OPTIONS", path)

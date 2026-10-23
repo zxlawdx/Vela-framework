@@ -5,42 +5,55 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vela App</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: { extend: { fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
-      }}}
-    }
-  </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <style>
-    * { -webkit-user-select: none; user-select: none; }
-    input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
-    html, body { overflow: hidden; height: 100%; width: 100%; margin: 0; background: transparent; }
-    #vela-root, #vela-main, #vela-page { background: transparent; }
-    #vela-page { transition: opacity .12s ease, transform .12s ease; }
-    #vela-page.vela-transition-out { opacity: 0; transform: translateY(4px); }
-    .vela-layout-blank #vela-sidebar, .vela-layout-blank #vela-topbar { display: none !important; }
-    .vela-layout-blank #vela-main { width: 100vw; }
+    /*
+      The host viewport is the only intentionally global surface. Application
+      content lives below #vela-app-root and is never reset by the shell.
+    */
+    html, body.vela-host { width: 100%; height: 100%; margin: 0; }
+    body.vela-host { overflow: hidden; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+
+    .vela-shell { width: 100vw; height: 100vh; display: flex; overflow: hidden; color: #e4e4e7; background: #09090b; }
+    .vela-shell__sidebar { width: 15rem; flex: 0 0 15rem; border-right: 1px solid #27272a; background: #18181b; }
+    .vela-shell__main { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .vela-shell__topbar { min-height: 3rem; flex: 0 0 3rem; border-bottom: 1px solid #27272a; background: #18181b; }
+    .vela-shell__app-root { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: var(--vela-app-overflow, auto); padding: 0; background: transparent; }
+    .vela-shell--blank .vela-shell__sidebar,
+    .vela-shell--blank .vela-shell__topbar { display: none; }
+
+    .vela-shell__nav { height: 100%; padding: 1rem; display: flex; flex-direction: column; gap: .25rem; box-sizing: border-box; }
+    .vela-shell__brand { margin: 0 0 1rem; padding: .25rem; color: #fff; font-size: .875rem; font-weight: 700; }
+    .vela-shell__nav-button { appearance: none; width: 100%; border: 0; border-radius: .5rem; padding: .625rem .75rem; text-align: left; color: #a1a1aa; background: transparent; cursor: pointer; font: inherit; }
+    .vela-shell__nav-button:hover,
+    .vela-shell__nav-button.active { color: #fff; background: #27272a; }
+    .vela-shell__topbar-inner { min-height: 3rem; padding: 0 1rem; display: flex; align-items: center; gap: .75rem; box-sizing: border-box; }
+    .vela-shell__topbar-title { font-size: .875rem; font-weight: 600; }
+    .vela-shell__marker { margin-left: auto; color: #71717a; font: .75rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    .vela-shell__toast-host { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 2147483646; display: flex; flex-direction: column; gap: .5rem; pointer-events: none; }
+    .vela-shell__toast { max-width: 28rem; padding: .75rem 1rem; border: 1px solid #3f3f46; border-radius: .75rem; color: #e4e4e7; background: #27272a; box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.28); pointer-events: auto; }
+    .vela-shell__toast--error { border-color: #991b1b; background: #450a0a; color: #fecaca; }
+    .vela-shell__toast--success { border-color: #166534; background: #052e16; color: #bbf7d0; }
+    .vela-shell__toast--warning { border-color: #854d0e; background: #422006; color: #fef08a; }
+    .vela-shell__loading { position: fixed; inset: 0; z-index: 2147483645; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.4); }
+    .vela-shell__loading.is-visible { display: flex; }
+    .vela-shell__spinner { width: 2rem; height: 2rem; border: 2px solid #3b82f6; border-top-color: transparent; border-radius: 50%; animation: vela-spin .7s linear infinite; }
     @keyframes vela-spin { to { transform: rotate(360deg); } }
-    .vela-spinner { animation: vela-spin .7s linear infinite; }
   </style>
 </head>
-<body id="vela-body" class="font-sans antialiased">
-  <div id="vela-root" class="h-screen w-screen flex overflow-hidden">
-    <div id="vela-sidebar"></div>
-    <div id="vela-main" class="flex-1 flex flex-col overflow-hidden min-w-0">
-      <div id="vela-topbar"></div>
-      <main id="vela-page" class="flex-1 overflow-auto"></main>
+<body id="vela-body" class="vela-host">
+  <div id="vela-root" class="vela-shell">
+    <div id="vela-sidebar" class="vela-shell__sidebar"></div>
+    <div id="vela-main" class="vela-shell__main">
+      <div id="vela-topbar" class="vela-shell__topbar"></div>
+      <main id="vela-app-root" class="vela-shell__app-root" aria-live="polite">
+        <div id="vela-page"></div>
+      </main>
     </div>
   </div>
-  <div id="vela-toast" class="fixed bottom-5 right-5 flex flex-col gap-2 z-50 pointer-events-none"></div>
-  <div id="vela-loading" class="hidden fixed inset-0 bg-black/40 items-center justify-center z-50">
-    <div class="vela-spinner w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+  <div id="vela-toast" class="vela-shell__toast-host"></div>
+  <div id="vela-loading" class="vela-shell__loading" aria-hidden="true">
+    <div class="vela-shell__spinner" aria-label="Carregando"></div>
   </div>
 
   <script>
@@ -48,13 +61,77 @@
       currentPath: null,
       sidebarRoutes: [],
       config: {},
+      version: null,
       _initialized: false,
+      _navigationGeneration: 0,
+      _pageController: null,
+
+      platform: {
+        clipboard: {
+          async writeText(value) {
+            const text = String(value ?? '')
+            try {
+              if (window.pywebview?.api?.clipboard_write_text) {
+                const result = await window.pywebview.api.clipboard_write_text(text)
+                if (result?.ok) return true
+              }
+            } catch (err) {
+              console.warn('[Vela] Clipboard nativo indisponível:', err)
+            }
+            const textarea = document.createElement('textarea')
+            textarea.value = text
+            textarea.setAttribute('readonly', '')
+            textarea.style.position = 'fixed'
+            textarea.style.left = '-10000px'
+            textarea.style.top = '0'
+            document.body.appendChild(textarea)
+            textarea.select()
+            let copied = false
+            try { copied = document.execCommand('copy') }
+            finally { textarea.remove() }
+            return copied
+          },
+        },
+      },
+
+      async capabilities() {
+        let nativeCaps = {}
+        try {
+          if (window.pywebview?.api?.capabilities) nativeCaps = await window.pywebview.api.capabilities() || {}
+        } catch (err) {
+          console.warn('[Vela] Não foi possível consultar capabilities nativas:', err)
+        }
+        const canvas = document.createElement('canvas')
+        let canvas2d = false
+        let webgl = false
+        let webgl2 = false
+        try { canvas2d = Boolean(canvas.getContext('2d')) } catch (_) {}
+        try { webgl = Boolean(canvas.getContext('webgl') || canvas.getContext('experimental-webgl')) } catch (_) {}
+        try { webgl2 = Boolean(canvas.getContext('webgl2')) } catch (_) {}
+        let localStorageAvailable = false
+        try {
+          const key = '__vela_capability_probe__'
+          localStorage.setItem(key, '1')
+          localStorage.removeItem(key)
+          localStorageAvailable = true
+        } catch (_) {}
+        return {
+          ...nativeCaps,
+          pointerEvents: 'PointerEvent' in window,
+          canvas: canvas2d,
+          webgl,
+          webgl2,
+          localStorage: localStorageAvailable,
+          clipboard: Boolean(nativeCaps.clipboard) || typeof document.execCommand === 'function',
+        }
+      },
 
       async init() {
         if (this._initialized) return
         this._initialized = true
         try {
           this.config = await window.pywebview.api.get_config()
+          this.version = this.config.vela_version || null
           await this.loadRoutes()
           this.setupLayout()
           const params = new URLSearchParams(window.location.search)
@@ -68,46 +145,58 @@
 
       setupLayout() {
         const layout = this.config.layout || {}
+        const root = document.getElementById('vela-root')
         if (layout.sidebar !== false) this.renderSidebar()
         else document.getElementById('vela-sidebar')?.remove()
         if (layout.topbar !== false) this.renderTopbar()
         else document.getElementById('vela-topbar')?.remove()
-        this.bindPageLinks(document.getElementById('vela-page'))
+        root?.classList.toggle('vela-shell--no-sidebar', layout.sidebar === false)
+        root?.classList.toggle('vela-shell--no-topbar', layout.topbar === false)
       },
 
       async navigate(path, params = {}) {
+        const generation = ++this._navigationGeneration
         const previousPage = window.VelaPage
         if (previousPage?.beforeUnmount) {
-          try { previousPage.beforeUnmount() } catch (err) {
+          try { await previousPage.beforeUnmount() } catch (err) {
             console.error('[Vela] Erro em VelaPage.beforeUnmount():', err)
           }
         }
+        if (this._pageController) this._pageController.abort()
+        const controller = new AbortController()
+        this._pageController = controller
         this.showLoading()
         try {
           const result = await window.pywebview.api.navigate(path, JSON.stringify(params))
+          if (generation !== this._navigationGeneration) return
           const page = document.getElementById('vela-page')
-          page.classList.add('vela-transition-out')
-          await this._sleep(120)
+          if (!page) return
           window.VelaPage = null
           page.innerHTML = result.html || ''
           if (previousPage?.unmounted) {
-            try { previousPage.unmounted() } catch (err) {
+            try { await previousPage.unmounted() } catch (err) {
               console.error('[Vela] Erro em VelaPage.unmounted():', err)
             }
           }
-          page.classList.remove('vela-transition-out')
           this.currentPath = path
           this.applyRouteLayout(result.layout)
           this.updateSidebarActive(path)
           this.updateTopbarTitle(path)
 
-          // Scripts pertencem ao template da aplicação (trusted application code).
-          // Valores de contexto são autoescapados no Python; somente SafeHTML pode
-          // inserir HTML cru. Páginas de erro/404 nunca executam scripts.
           if (result.ok) {
             this.executeInlineScripts(page)
-            if (window.VelaPage?.mounted) {
-              try { window.VelaPage.mounted() } catch (err) {
+            const pageApi = (window.VelaPage && typeof window.VelaPage === 'object') ? window.VelaPage : {}
+            pageApi.signal = controller.signal
+            pageApi.navigationId = generation
+            window.VelaPage = pageApi
+            if (pageApi.beforeMount) {
+              try { await pageApi.beforeMount() } catch (err) {
+                console.error('[Vela] Erro em VelaPage.beforeMount():', err)
+              }
+            }
+            if (generation !== this._navigationGeneration) return
+            if (pageApi.mounted) {
+              try { await pageApi.mounted() } catch (err) {
                 console.error('[Vela] Erro em VelaPage.mounted():', err)
               }
             }
@@ -116,20 +205,22 @@
           }
 
           document.dispatchEvent(new CustomEvent('vela:navigate', {
-            detail: { path, layout: result.layout, status: result.status, ok: result.ok }
+            detail: { path, layout: result.layout, status: result.status, ok: result.ok, navigationId: generation }
           }))
         } catch (err) {
-          console.error('[Vela] Erro ao navegar:', err)
-          this.toast('Erro ao navegar.', 'error')
+          if (generation === this._navigationGeneration) {
+            console.error('[Vela] Erro ao navegar:', err)
+            this.toast('Erro ao navegar.', 'error')
+          }
         } finally {
-          this.hideLoading()
+          if (generation === this._navigationGeneration) this.hideLoading()
         }
       },
 
       applyRouteLayout(layout) {
         const root = document.getElementById('vela-root')
-        root.classList.remove('vela-layout-blank', 'vela-layout-default')
-        root.classList.add(layout === 'blank' ? 'vela-layout-blank' : 'vela-layout-default')
+        if (!root) return
+        root.classList.toggle('vela-shell--blank', layout === 'blank')
       },
 
       async loadRoutes() {
@@ -141,56 +232,35 @@
         const host = document.getElementById('vela-sidebar')
         if (!host) return
         host.replaceChildren()
-        const aside = document.createElement('aside')
-        aside.className = 'w-60 h-screen bg-zinc-900 border-r border-zinc-800/60 flex flex-col p-4 gap-1 flex-shrink-0'
-        const brand = document.createElement('div')
-        brand.className = 'mb-6 px-1 flex items-center gap-2'
-        const mark = document.createElement('div')
-        mark.className = 'w-6 h-6 bg-blue-500 rounded-md flex items-center justify-center'
-        mark.textContent = 'V'
-        const title = document.createElement('span')
-        title.className = 'text-sm font-bold tracking-tight text-white'
-        title.textContent = String(this.config.title || 'Vela')
-        brand.append(mark, title)
         const nav = document.createElement('nav')
-        nav.className = 'flex flex-col gap-0.5 flex-1'
+        nav.className = 'vela-shell__nav'
+        const brand = document.createElement('div')
+        brand.className = 'vela-shell__brand'
+        brand.textContent = String(this.config.title || 'Vela')
+        nav.append(brand)
         for (const route of this.sidebarRoutes) {
           const button = document.createElement('button')
+          button.type = 'button'
           button.dataset.velaRoute = String(route.path)
           button.dataset.velaLink = ''
-          button.className = 'vela-nav-item w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2.5 text-zinc-400 hover:text-white hover:bg-zinc-800'
-          if (route.icon) {
-            const icon = document.createElement('span')
-            icon.className = 'text-base leading-none'
-            icon.textContent = String(route.icon)
-            button.append(icon)
-          }
-          const label = document.createElement('span')
-          label.textContent = String(route.title || '')
-          button.append(label)
+          button.className = 'vela-shell__nav-button'
+          button.textContent = `${route.icon ? `${route.icon} ` : ''}${String(route.title || '')}`
           nav.append(button)
         }
-        if (!this.sidebarRoutes.length) {
-          const empty = document.createElement('p')
-          empty.className = 'text-xs text-zinc-600 px-2'
-          empty.textContent = 'Nenhuma rota registrada.'
-          nav.append(empty)
-        }
-        aside.append(brand, nav)
-        host.append(aside)
+        host.append(nav)
       },
 
       renderTopbar() {
         const topbar = document.getElementById('vela-topbar')
         if (!topbar) return
         topbar.replaceChildren()
-        const header = document.createElement('header')
-        header.className = 'h-12 bg-zinc-900/50 border-b border-zinc-800/60 flex items-center px-5 gap-3 flex-shrink-0'
+        const header = document.createElement('div')
+        header.className = 'vela-shell__topbar-inner'
         const title = document.createElement('span')
         title.id = 'vela-topbar-title'
-        title.className = 'text-sm font-semibold text-zinc-200'
+        title.className = 'vela-shell__topbar-title'
         const marker = document.createElement('span')
-        marker.className = 'ml-auto text-xs text-zinc-600 font-mono'
+        marker.className = 'vela-shell__marker'
         marker.textContent = 'vela'
         header.append(title, marker)
         topbar.append(header)
@@ -198,9 +268,7 @@
 
       updateSidebarActive(path) {
         document.querySelectorAll('[data-vela-route]').forEach(el => {
-          const active = el.dataset.velaRoute === path
-          el.classList.toggle('active', active)
-          el.classList.toggle('text-zinc-400', !active)
+          el.classList.toggle('active', el.dataset.velaRoute === path)
         })
       },
 
@@ -216,61 +284,49 @@
           const newScript = document.createElement('script')
           Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
           if (oldScript.textContent) newScript.textContent = oldScript.textContent
-          document.body.appendChild(newScript)
-          oldScript.remove()
-        })
-      },
-
-      bindPageLinks(container) {
-        if (!container || container.dataset.velaLinksBound === '1') return
-        container.dataset.velaLinksBound = '1'
-        container.addEventListener('click', event => {
-          const link = event.target.closest('[data-vela-link]')
-          if (!link) return
-          event.preventDefault()
-          const path = link.getAttribute('href') || link.dataset.velaRoute
-          if (path) Vela.navigate(path)
+          oldScript.replaceWith(newScript)
         })
       },
 
       toast(message, type = 'info', duration = 3500) {
-        const styles = {
-          info: 'bg-zinc-800 text-zinc-200 border-zinc-700',
-          success: 'bg-green-950 text-green-200 border-green-800',
-          error: 'bg-red-950 text-red-200 border-red-800',
-          warning: 'bg-yellow-950 text-yellow-200 border-yellow-800',
-        }
         const container = document.getElementById('vela-toast')
+        if (!container) return
         const el = document.createElement('div')
-        el.className = `pointer-events-auto px-4 py-3 rounded-xl text-sm shadow-xl border ${styles[type] || styles.info}`
+        el.className = `vela-shell__toast vela-shell__toast--${type}`
         el.textContent = String(message)
         container.appendChild(el)
-        setTimeout(() => { el.style.transition = 'opacity .3s ease'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300) }, duration)
+        setTimeout(() => el.remove(), duration)
       },
 
-      showLoading() { const el = document.getElementById('vela-loading'); el.classList.remove('hidden'); el.classList.add('flex') },
-      hideLoading() { const el = document.getElementById('vela-loading'); el.classList.add('hidden'); el.classList.remove('flex') },
-      _sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) },
+      showLoading() {
+        const el = document.getElementById('vela-loading')
+        el?.classList.add('is-visible')
+        el?.setAttribute('aria-hidden', 'false')
+      },
+      hideLoading() {
+        const el = document.getElementById('vela-loading')
+        el?.classList.remove('is-visible')
+        el?.setAttribute('aria-hidden', 'true')
+      },
     }
 
+    window.Vela = Vela
     document.addEventListener('click', event => {
-      const link = event.target.closest('[data-vela-link]')
+      const link = event.target.closest?.('[data-vela-link]')
       if (!link) return
-      const page = document.getElementById('vela-page')
-      if (page && page.contains(link)) return
       event.preventDefault()
       const path = link.getAttribute('href') || link.dataset.velaRoute
       if (path) Vela.navigate(path)
     })
 
-    function _velaBootstrap() {
+    function velaBootstrap() {
       if (window.pywebview?.api) Vela.init()
-      else setTimeout(_velaBootstrap, 50)
+      else setTimeout(velaBootstrap, 50)
     }
-    window.addEventListener('pywebviewready', () => Vela.init())
+    window.addEventListener('pywebviewready', () => Vela.init(), { once: true })
     document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => { if (!Vela._initialized) _velaBootstrap() }, 300)
-    })
+      setTimeout(() => { if (!Vela._initialized) velaBootstrap() }, 100)
+    }, { once: true })
   </script>
 </body>
 </html>

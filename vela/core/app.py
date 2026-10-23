@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import importlib
+import sys
 
 from vela.api import api
+from vela.apps import AppConfig, AppRegistry
 from vela.config import ConfigLoader, is_missing_target
 from vela.core.api_server import ApiServer
 from vela.core.bridge import BaseBridge
@@ -18,15 +20,13 @@ from vela.runtime.lifecycle import LifecycleManager
 
 
 class VelaApp:
-    """Facade pública; composição e lifecycle ficam explícitos internamente."""
-
     def __init__(
         self,
-        title: str | None = None,
-        layout: dict | None = None,
-        settings_module: str = "config.settings",
+        title=None,
+        layout=None,
+        settings_module="config.settings",
         bridge_class=None,
-        enable_api: bool = True,
+        enable_api=True,
         window_backend_class=None,
         http_server_class=None,
     ):
@@ -36,49 +36,32 @@ class VelaApp:
         self.config = self._config_loader.load(title=title, layout=layout, enable_api=enable_api)
         self._config = self.config.to_dict()
         self.enable_api = enable_api
-
+        self.apps = AppRegistry()
         self.router = Router()
         self.router.debug = self.config.debug
         self.api_router = api.new_router()
         self.events = EventBus()
         self.lifecycle = LifecycleManager()
+        self.lifecycle.configured()
         self.hot_reload = HotReloadManager(enabled=self.config.debug)
         self.hot_reload.add_reload_callback(self.router.refresh_module)
         self.hot_reload.add_reload_callback(self.api_router.refresh_module)
         self.hot_reload.set_reload_context(lambda: api.bind(self.api_router))
-
         bridge_cls = bridge_class or BaseBridge
         self.bridge = bridge_cls(router=self.router, config=self._config)
         if hasattr(self.bridge, "events"):
             self.bridge.events = self.events
         if hasattr(self.bridge, "hot_reload"):
             self.bridge.hot_reload = self.hot_reload
-
         self._window_backend_class = window_backend_class or DesktopWindow
         self._http_server_class = http_server_class or ApiServer
         self.api_server = None
+        self._window = None
         self._closed = False
+        self.lifecycle.on_shutdown(self.hot_reload.stop)
         self.lifecycle.on_shutdown(self.events.clear)
-
         if self.config.shell_mode == "http":
             self.router.base_url = f"http://{self.config.api.host}:{self.config.api.port}"
-
-        self.logger.info(
-            f"Vela configurado | title={self.config.title} "
-            f"| sidebar={self.config.layout.sidebar} "
-            f"| topbar={self.config.layout.topbar} "
-            f"| api={self.config.api.enabled}"
-        )
-
-    def _load_settings(self, module_path: str):
-        return ConfigLoader(module_path).load_module()
-
-    def _build_config(self, title: str | None = None, layout: dict | None = None) -> dict:
-        return self._config_loader.load(
-            title=title,
-            layout=layout,
-            enable_api=self.enable_api,
-        ).to_dict()
 
     @staticmethod
     def _import_optional(target: str):
@@ -89,30 +72,34 @@ class VelaApp:
                 return None
             raise
 
-    def register_app(self, app_module: str):
-        if not isinstance(app_module, str) or not app_module:
-            raise ValueError("app_module deve ser uma string não vazia.")
+    def _track_manifest_modules(self, config: AppConfig) -> None:
+        """Track only manifest-declared view/service prefixes, never ``apps.*`` wholesale."""
+        for prefix in config.persistent_modules:
+            self.hot_reload.protect_prefix(prefix)
+        prefixes = tuple(config.reloadable_modules) + tuple(config.persistent_modules)
+        for name, module in tuple(sys.modules.items()):
+            if module is None:
+                continue
+            for prefix in prefixes:
+                if name == prefix or name.startswith(prefix + "."):
+                    persistent = any(
+                        name == p or name.startswith(p + ".") for p in config.persistent_modules
+                    )
+                    self.hot_reload.track_module(module, reloadable=not persistent)
+                    break
+
+    def register_app(self, app: str | AppConfig | type[AppConfig]):
+        config = self.apps.register(app)
         with api.bind(self.api_router):
-            views_module = self._import_optional(f"{app_module}.views")
+            views_module = self._import_optional(config.views_module)
             if views_module is not None:
                 register_routes = getattr(views_module, "register_routes", None)
                 if callable(register_routes):
                     register_routes(self.router)
-                    self.logger.info(f"Views do app {app_module!r} registradas.")
-                else:
-                    self.logger.warning(
-                        f"App {app_module!r} possui views, mas não register_routes()."
-                    )
-
-            urls_module = self._import_optional(f"{app_module}.urls")
-            if urls_module is not None:
-                self.logger.info(f"URLs do app {app_module!r} carregadas.")
-
-            api_module = self._import_optional(f"{app_module}.api")
-            if api_module is not None:
-                self.logger.info(f"API do app {app_module!r} carregada.")
-
-        self.hot_reload.track_loaded_prefix(app_module)
+            self._import_optional(config.urls_module)
+            # Official registration path: no manual ``import apps.foo.api`` needed.
+            self._import_optional(config.api_module)
+        self._track_manifest_modules(config)
         return self
 
     def run(self):
@@ -120,11 +107,11 @@ class VelaApp:
         self.lifecycle.startup()
         try:
             if c["api"]["enabled"]:
-                self.lifecycle.transition("api_start")
                 self.api_server = self._http_server_class(
                     api_router=self.api_router,
                     host=c["api"]["host"],
                     port=c["api"]["port"],
+                    prefix=c["api"].get("prefix", "/api"),
                     debug=c["debug"],
                     static_root=c.get("static_root", "staticfiles"),
                     auto_port=c["api"].get("auto_port", True),
@@ -146,9 +133,7 @@ class VelaApp:
                         f"Porta {requested_port} indisponível; API iniciou em {actual_port}."
                     )
                 self.api_server.wait_until_ready()
-
-            self.lifecycle.transition("window_start")
-            window = self._window_backend_class(
+            self._window = self._window_backend_class(
                 title=c["title"],
                 width=c["window"]["width"],
                 height=c["window"]["height"],
@@ -160,13 +145,19 @@ class VelaApp:
                 shell_mode=c.get("shell_mode", "http"),
                 icon=c.get("icon", ""),
             )
-            self.lifecycle.transition("running")
-            window.run()
+            stop_window = getattr(self._window, "stop", None)
+            if callable(stop_window):
+                self.lifecycle.on_shutdown(stop_window)
+            self.lifecycle.running()
+            self._window.run()
         finally:
-            self.close()
+            self.stop()
 
-    def close(self):
+    def stop(self):
         if self._closed:
             return
         self._closed = True
         self.lifecycle.shutdown()
+
+    def close(self):
+        self.stop()
