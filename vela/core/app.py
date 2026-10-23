@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import importlib
+import sys
 
 from vela.api import api
+from vela.apps import AppConfig, AppRegistry
 from vela.config import ConfigLoader, is_missing_target
 from vela.core.api_server import ApiServer
 from vela.core.bridge import BaseBridge
@@ -18,7 +20,7 @@ from vela.runtime.lifecycle import LifecycleManager
 
 
 class VelaApp:
-    """Facade pública; composição e lifecycle ficam explícitos internamente."""
+    """Public facade backed by explicit app/runtime registries."""
 
     def __init__(
         self,
@@ -37,11 +39,13 @@ class VelaApp:
         self._config = self.config.to_dict()
         self.enable_api = enable_api
 
+        self.apps = AppRegistry()
         self.router = Router()
         self.router.debug = self.config.debug
         self.api_router = api.new_router()
         self.events = EventBus()
         self.lifecycle = LifecycleManager()
+        self.lifecycle.configured()
         self.hot_reload = HotReloadManager(enabled=self.config.debug)
         self.hot_reload.add_reload_callback(self.router.refresh_module)
         self.hot_reload.add_reload_callback(self.api_router.refresh_module)
@@ -57,7 +61,9 @@ class VelaApp:
         self._window_backend_class = window_backend_class or DesktopWindow
         self._http_server_class = http_server_class or ApiServer
         self.api_server = None
+        self._window = None
         self._closed = False
+        self.lifecycle.on_shutdown(self.hot_reload.stop)
         self.lifecycle.on_shutdown(self.events.clear)
 
         if self.config.shell_mode == "http":
@@ -70,16 +76,6 @@ class VelaApp:
             f"| api={self.config.api.enabled}"
         )
 
-    def _load_settings(self, module_path: str):
-        return ConfigLoader(module_path).load_module()
-
-    def _build_config(self, title: str | None = None, layout: dict | None = None) -> dict:
-        return self._config_loader.load(
-            title=title,
-            layout=layout,
-            enable_api=self.enable_api,
-        ).to_dict()
-
     @staticmethod
     def _import_optional(target: str):
         try:
@@ -89,30 +85,52 @@ class VelaApp:
                 return None
             raise
 
-    def register_app(self, app_module: str):
-        if not isinstance(app_module, str) or not app_module:
-            raise ValueError("app_module deve ser uma string não vazia.")
+    def _track_app_module(self, module, config: AppConfig) -> None:
+        if module is None:
+            return
+        name = module.__name__
+        if any(name == prefix or name.startswith(prefix + ".") for prefix in config.persistent_modules):
+            self.hot_reload.track_module(module, reloadable=False)
+            return
+        reloadable = any(
+            name == prefix or name.startswith(prefix + ".")
+            for prefix in config.reloadable_modules
+        )
+        self.hot_reload.track_module(module, reloadable=reloadable)
+
+    def register_app(self, app: str | AppConfig | type[AppConfig]):
+        config = self.apps.register(app)
+        loaded = []
         with api.bind(self.api_router):
-            views_module = self._import_optional(f"{app_module}.views")
+            views_module = self._import_optional(config.views_module)
             if views_module is not None:
+                loaded.append(views_module)
                 register_routes = getattr(views_module, "register_routes", None)
                 if callable(register_routes):
                     register_routes(self.router)
-                    self.logger.info(f"Views do app {app_module!r} registradas.")
+                    self.logger.info(f"Views do app {config.module!r} registradas.")
                 else:
                     self.logger.warning(
-                        f"App {app_module!r} possui views, mas não register_routes()."
+                        f"App {config.module!r} possui views, mas não register_routes()."
                     )
 
-            urls_module = self._import_optional(f"{app_module}.urls")
+            urls_module = self._import_optional(config.urls_module)
             if urls_module is not None:
-                self.logger.info(f"URLs do app {app_module!r} carregadas.")
+                loaded.append(urls_module)
+                self.logger.info(f"URLs do app {config.module!r} carregadas.")
 
-            api_module = self._import_optional(f"{app_module}.api")
+            # Explicitly import the API module while the app-scoped router is
+            # bound. DFD-style apps therefore no longer need a manual side-effect
+            # import in config/wsgi.py.
+            api_module = self._import_optional(config.api_module)
             if api_module is not None:
-                self.logger.info(f"API do app {app_module!r} carregada.")
+                loaded.append(api_module)
+                self.logger.info(f"API do app {config.module!r} carregada.")
 
-        self.hot_reload.track_loaded_prefix(app_module)
+        for module in loaded:
+            self._track_app_module(module, config)
+        for prefix in config.persistent_modules:
+            self.hot_reload.protect_prefix(prefix)
         return self
 
     def run(self):
@@ -120,7 +138,6 @@ class VelaApp:
         self.lifecycle.startup()
         try:
             if c["api"]["enabled"]:
-                self.lifecycle.transition("api_start")
                 self.api_server = self._http_server_class(
                     api_router=self.api_router,
                     host=c["api"]["host"],
@@ -147,8 +164,7 @@ class VelaApp:
                     )
                 self.api_server.wait_until_ready()
 
-            self.lifecycle.transition("window_start")
-            window = self._window_backend_class(
+            self._window = self._window_backend_class(
                 title=c["title"],
                 width=c["window"]["width"],
                 height=c["window"]["height"],
@@ -160,13 +176,21 @@ class VelaApp:
                 shell_mode=c.get("shell_mode", "http"),
                 icon=c.get("icon", ""),
             )
-            self.lifecycle.transition("running")
-            window.run()
+            stop_window = getattr(self._window, "stop", None)
+            if callable(stop_window):
+                self.lifecycle.on_shutdown(stop_window)
+            self.lifecycle.running()
+            self._window.run()
         finally:
-            self.close()
+            self.stop()
 
-    def close(self):
+    def stop(self):
+        """Stop all runtime resources. Safe to call multiple times."""
         if self._closed:
             return
         self._closed = True
         self.lifecycle.shutdown()
+
+    def close(self):
+        """Backward-compatible alias for :meth:`stop`."""
+        self.stop()

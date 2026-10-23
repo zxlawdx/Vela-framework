@@ -1,22 +1,43 @@
 # SPDX-License-Identifier: MPL-2.0
-"""Lifecycle explícito e shutdown idempotente."""
+"""Deterministic application lifecycle and idempotent shutdown."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from enum import Enum
 
 from vela.log.logger import VelaLogger
 
 
+class LifecycleState(str, Enum):
+    CREATED = "created"
+    CONFIGURED = "configured"
+    STARTING = "starting"
+    RUNNING = "running"
+    STOPPING = "stopping"
+    STOPPED = "stopped"
+
+
 class LifecycleManager:
-    PHASES = ("configure", "startup", "api_start", "window_start", "running", "shutdown")
+    _ALLOWED = {
+        LifecycleState.CREATED: {LifecycleState.CONFIGURED, LifecycleState.STOPPING},
+        LifecycleState.CONFIGURED: {LifecycleState.STARTING, LifecycleState.STOPPING},
+        LifecycleState.STARTING: {LifecycleState.RUNNING, LifecycleState.STOPPING},
+        LifecycleState.RUNNING: {LifecycleState.STOPPING},
+        LifecycleState.STOPPING: {LifecycleState.STOPPED},
+        LifecycleState.STOPPED: set(),
+    }
 
     def __init__(self):
-        self.phase = "configure"
+        self.state = LifecycleState.CREATED
         self._startup: list[Callable[[], object]] = []
         self._shutdown: list[Callable[[], object]] = []
-        self._closed = False
         self.logger = VelaLogger("lifecycle")
+
+    @property
+    def phase(self) -> str:
+        """Compatibility alias for older diagnostics."""
+        return self.state.value
 
     def on_startup(self, callback: Callable[[], object]):
         if callback not in self._startup:
@@ -28,24 +49,36 @@ class LifecycleManager:
             self._shutdown.append(callback)
         return callback
 
-    def transition(self, phase: str) -> None:
-        if phase not in self.PHASES:
-            raise ValueError(f"Fase de lifecycle desconhecida: {phase}")
-        self.phase = phase
-        self.logger.debug(f"Lifecycle → {phase}")
+    def transition(self, state: LifecycleState | str) -> None:
+        target = state if isinstance(state, LifecycleState) else LifecycleState(state)
+        if target == self.state:
+            return
+        if target not in self._ALLOWED[self.state]:
+            raise RuntimeError(f"Transição de lifecycle inválida: {self.state.value} -> {target.value}")
+        self.state = target
+        self.logger.debug(f"Lifecycle → {target.value}")
+
+    def configured(self) -> None:
+        self.transition(LifecycleState.CONFIGURED)
 
     def startup(self) -> None:
-        self.transition("startup")
+        if self.state is LifecycleState.CREATED:
+            self.configured()
+        self.transition(LifecycleState.STARTING)
         for callback in tuple(self._startup):
             callback()
 
+    def running(self) -> None:
+        self.transition(LifecycleState.RUNNING)
+
     def shutdown(self) -> None:
-        if self._closed:
+        if self.state is LifecycleState.STOPPED:
             return
-        self._closed = True
-        self.transition("shutdown")
+        if self.state is not LifecycleState.STOPPING:
+            self.transition(LifecycleState.STOPPING)
         for callback in reversed(tuple(self._shutdown)):
             try:
                 callback()
             except Exception as exc:
                 self.logger.exception(f"Erro durante shutdown: {exc}")
+        self.transition(LifecycleState.STOPPED)
