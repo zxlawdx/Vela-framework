@@ -102,9 +102,12 @@
           console.warn('[Vela] Não foi possível consultar capabilities nativas:', err)
         }
         const canvas = document.createElement('canvas')
-        const supportsContext = name => {
-          try { return Boolean(canvas.getContext(name)) } catch (_) { return false }
-        }
+        let canvas2d = false
+        let webgl = false
+        let webgl2 = false
+        try { canvas2d = Boolean(canvas.getContext('2d')) } catch (_) {}
+        try { webgl = Boolean(canvas.getContext('webgl') || canvas.getContext('experimental-webgl')) } catch (_) {}
+        try { webgl2 = Boolean(canvas.getContext('webgl2')) } catch (_) {}
         let localStorageAvailable = false
         try {
           const key = '__vela_capability_probe__'
@@ -115,9 +118,9 @@
         return {
           ...nativeCaps,
           pointerEvents: 'PointerEvent' in window,
-          canvas: supportsContext('2d'),
-          webgl: supportsContext('webgl') || supportsContext('experimental-webgl'),
-          webgl2: supportsContext('webgl2'),
+          canvas: canvas2d,
+          webgl,
+          webgl2,
           localStorage: localStorageAvailable,
           clipboard: Boolean(nativeCaps.clipboard) || typeof document.execCommand === 'function',
         }
