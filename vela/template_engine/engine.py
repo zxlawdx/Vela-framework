@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
-"""Template engine Vela: AST compilada, autoescaping e cache bounded."""
+"""Template engine Vela: cached AST, autoescaping and shared static resolution."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from vela.exceptions import TemplateError
+from vela.static import StaticResolver
 from vela.template_engine.nodes import Node
 from vela.template_engine.parser import parse
 
@@ -29,13 +30,13 @@ class _Environment:
             return f"/#route-{name}-not-found"
 
     def resolve_static(self, path: str) -> str:
-        safe_path = _normalize_relative_asset(path)
-        if self.base_url:
-            return f"{self.base_url}/__vela__/static/{safe_path.as_posix()}"
-        root = (Path.cwd() / self.static_root).resolve()
-        target = (root / safe_path).resolve()
-        _ensure_within(target, (root,), "static")
-        return target.as_uri()
+        try:
+            resolver = StaticResolver.for_project(collected_root=self.static_root)
+            if self.base_url:
+                return resolver.url(path, base_url=self.base_url)
+            return resolver.resolve_collected(path, must_exist=False).as_uri()
+        except ValueError as exc:
+            raise TemplateError("Caminho de asset inválido.") from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,13 +71,6 @@ def _ensure_within(path: Path, roots: Sequence[Path], kind: str) -> Path:
         except ValueError:
             continue
     raise TemplateError(f"Caminho de {kind} fora das roots permitidas: {path}")
-
-
-def _normalize_relative_asset(value: str) -> Path:
-    candidate = Path(value)
-    if candidate.is_absolute() or ".." in candidate.parts:
-        raise TemplateError("Caminho de asset inválido.")
-    return candidate
 
 
 def _template_roots(
