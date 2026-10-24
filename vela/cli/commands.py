@@ -278,7 +278,7 @@ class CommandRunner:
         import argparse
         from pathlib import Path
 
-        from vela.cli.build import BuildOptions, build_app, identity, read_settings
+        from vela.cli.build import identity, read_settings
         from vela.cli.install import install_bundle
 
         parser = argparse.ArgumentParser(prog="python manage.py installapp")
@@ -290,9 +290,6 @@ class CommandRunner:
             if parsed.bundle
             else Path.cwd() / "dist" / identity(read_settings(Path.cwd()))["slug"]
         )
-        if not bundle.exists():
-            plan = build_app(options=BuildOptions(output="dist"))
-            bundle = plan.bundle_dir
         return install_bundle(bundle, parsed.scope)
 
     def cmd_uninstallapp(self, args):
