@@ -63,6 +63,7 @@
       config: {},
       version: null,
       _initialized: false,
+      _initializing: false,
       _navigationGeneration: 0,
       _pageController: null,
 
@@ -127,8 +128,8 @@
       },
 
       async init() {
-        if (this._initialized) return
-        this._initialized = true
+        if (this._initialized || this._initializing) return
+        this._initializing = true
         try {
           this.config = await window.pywebview.api.get_config()
           this.version = this.config.vela_version || null
@@ -137,9 +138,13 @@
           const params = new URLSearchParams(window.location.search)
           const entry = params.get('entry') || window.__VELA_ENTRY__ || '/'
           await this.navigate(entry)
+          this._initialized = true
         } catch (err) {
+          this._initialized = false
           console.error('[Vela] Erro no init:', err)
           this.toast('Falha ao inicializar o app.', 'error')
+        } finally {
+          this._initializing = false
         }
       },
 
@@ -319,13 +324,19 @@
       if (path) Vela.navigate(path)
     })
 
+    function velaBridgeReady() {
+      const api = window.pywebview?.api
+      return typeof api?.get_config === 'function' && typeof api?.navigate === 'function'
+    }
+
     function velaBootstrap() {
-      if (window.pywebview?.api) Vela.init()
+      if (Vela._initialized || Vela._initializing) return
+      if (velaBridgeReady()) Vela.init()
       else setTimeout(velaBootstrap, 50)
     }
-    window.addEventListener('pywebviewready', () => Vela.init(), { once: true })
+    window.addEventListener('pywebviewready', velaBootstrap, { once: true })
     document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => { if (!Vela._initialized) velaBootstrap() }, 100)
+      setTimeout(velaBootstrap, 100)
     }, { once: true })
   </script>
 </body>
