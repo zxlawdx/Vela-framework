@@ -17,9 +17,7 @@ class AssetPipelineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "package.json").write_text("{}", encoding="utf-8")
-            with mock.patch(
-                "vela.cli.asset_pipeline.resolve_node_tool", return_value=None
-            ):
+            with mock.patch("vela.cli.asset_pipeline.resolve_node_tool", return_value=None):
                 with self.assertRaises(asset_pipeline.AssetPipelineError) as raised:
                     asset_pipeline.run_project_asset_pipeline(
                         root,
@@ -76,9 +74,7 @@ class AssetPipelineTests(unittest.TestCase):
                         "vela.cli.asset_pipeline._node_dependencies_ready",
                         return_value=False,
                     ),
-                    mock.patch(
-                        "vela.cli.asset_pipeline._run", return_value=completed
-                    ) as run,
+                    mock.patch("vela.cli.asset_pipeline._run", return_value=completed) as run,
                 ):
                     report = asset_pipeline.run_project_asset_pipeline(
                         root,
@@ -111,9 +107,7 @@ class AssetPipelineTests(unittest.TestCase):
                 static.mkdir(parents=True)
 
                 def build():
-                    (static / "generated.css").write_text(
-                        "generated", encoding="utf-8"
-                    )
+                    (static / "generated.css").write_text("generated", encoding="utf-8")
 
                 hook_module.build = build
                 sys.modules[hook_module.__name__] = hook_module
@@ -126,9 +120,7 @@ class AssetPipelineTests(unittest.TestCase):
                             "tailwind": False,
                         },
                     )
-                    self.assertTrue(
-                        (root / "staticfiles" / "demo" / "generated.css").is_file()
-                    )
+                    self.assertTrue((root / "staticfiles" / "demo" / "generated.css").is_file())
                     self.assertFalse(result["tailwind_bundle"])
                     self.assertEqual(
                         result["asset_pipeline"]["python_hooks"],
