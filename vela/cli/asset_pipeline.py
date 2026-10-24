@@ -39,9 +39,7 @@ def _run(
             shell=False,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
-        raise AssetPipelineError(
-            f"Falha ao executar {' '.join(command)!r}: {exc}"
-        ) from exc
+        raise AssetPipelineError(f"Falha ao executar {' '.join(command)!r}: {exc}") from exc
 
 
 def _node_tools(project_root: Path) -> tuple[str, str]:
@@ -49,11 +47,7 @@ def _node_tools(project_root: Path) -> tuple[str, str]:
     npm = resolve_node_tool("npm", project_root=str(project_root))
     if node and npm:
         return node, npm
-    missing = (
-        "Node.js e npm"
-        if not node and not npm
-        else ("Node.js" if not node else "npm")
-    )
+    missing = "Node.js e npm" if not node and not npm else ("Node.js" if not node else "npm")
     raise AssetPipelineError(
         f"{missing} não encontrado(s). O pipeline de assets deste projeto depende deles. "
         "Instale Node.js (recomendado: versão LTS, com npm) e execute novamente "
@@ -112,9 +106,7 @@ def _install_node_dependencies(
     verbose: bool,
 ) -> str:
     if install_mode not in {"ci", "install"}:
-        raise AssetPipelineError(
-            "ASSETS['node']['install'] deve ser 'ci' ou 'install'."
-        )
+        raise AssetPipelineError("ASSETS['node']['install'] deve ser 'ci' ou 'install'.")
     if install_mode == "ci" and not (project_root / "package-lock.json").is_file():
         raise AssetPipelineError(
             "ASSETS solicita `npm ci`, mas package-lock.json não existe. "
@@ -126,31 +118,23 @@ def _install_node_dependencies(
         print(f"\n  -> Instalando dependências locais: {' '.join(command)}")
     result = _run(command, cwd=project_root, timeout=300)
     if result.returncode != 0:
-        raise AssetPipelineError(
-            f"`{' '.join(command)}` terminou com código {result.returncode}."
-        )
+        raise AssetPipelineError(f"`{' '.join(command)}` terminou com código {result.returncode}.")
     return install_mode
 
 
-def _run_npm_script(
-    project_root: Path, npm: str, script: str, *, verbose: bool
-) -> None:
+def _run_npm_script(project_root: Path, npm: str, script: str, *, verbose: bool) -> None:
     if not isinstance(script, str) or not script.strip():
         raise AssetPipelineError("Scripts npm em ASSETS devem ser strings não vazias.")
     if verbose:
         print(f"\n  -> npm run {script}")
     result = _run([npm, "run", script], cwd=project_root, timeout=300)
     if result.returncode != 0:
-        raise AssetPipelineError(
-            f"`npm run {script}` terminou com código {result.returncode}."
-        )
+        raise AssetPipelineError(f"`npm run {script}` terminou com código {result.returncode}.")
 
 
 def _run_python_hook(project_root: Path, target: str, *, verbose: bool) -> None:
     if not isinstance(target, str) or ":" not in target:
-        raise AssetPipelineError(
-            "Hooks Python em ASSETS devem usar o formato 'modulo:callable'."
-        )
+        raise AssetPipelineError("Hooks Python em ASSETS devem usar o formato 'modulo:callable'.")
     module_name, callable_name = target.rsplit(":", 1)
     try:
         module = importlib.import_module(module_name)
