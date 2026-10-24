@@ -43,7 +43,8 @@ class AssetPipelineTests(unittest.TestCase):
                     return_value=("/usr/bin/node", "/usr/bin/npm"),
                 ),
                 mock.patch(
-                    "vela.cli.asset_pipeline._node_dependencies_ready", return_value=False
+                    "vela.cli.asset_pipeline._node_dependencies_ready",
+                    return_value=False,
                 ),
                 mock.patch.object(sys.stdin, "isatty", return_value=False),
             ):
@@ -72,7 +73,8 @@ class AssetPipelineTests(unittest.TestCase):
                         return_value=("/usr/bin/node", "/usr/bin/npm"),
                     ),
                     mock.patch(
-                        "vela.cli.asset_pipeline._node_dependencies_ready", return_value=False
+                        "vela.cli.asset_pipeline._node_dependencies_ready",
+                        return_value=False,
                     ),
                     mock.patch(
                         "vela.cli.asset_pipeline._run", return_value=completed
@@ -109,28 +111,32 @@ class AssetPipelineTests(unittest.TestCase):
                 static.mkdir(parents=True)
 
                 def build():
-                    (static / "generated.css").write_text("generated", encoding="utf-8")
+                    (static / "generated.css").write_text(
+                        "generated", encoding="utf-8"
+                    )
 
                 hook_module.build = build
                 sys.modules[hook_module.__name__] = hook_module
                 os.chdir(root)
-                result = collectstatic.collect_static(
-                    verbose=False,
-                    asset_config={
-                        "hooks": ["vela_test_collect_hook:build"],
-                        "tailwind": False,
-                    },
-                )
-                self.assertTrue(
-                    (root / "staticfiles" / "demo" / "generated.css").is_file()
-                )
-                self.assertFalse(result["tailwind_bundle"])
-                self.assertEqual(
-                    result["asset_pipeline"]["python_hooks"],
-                    ["vela_test_collect_hook:build"],
-                )
+                try:
+                    result = collectstatic.collect_static(
+                        verbose=False,
+                        asset_config={
+                            "hooks": ["vela_test_collect_hook:build"],
+                            "tailwind": False,
+                        },
+                    )
+                    self.assertTrue(
+                        (root / "staticfiles" / "demo" / "generated.css").is_file()
+                    )
+                    self.assertFalse(result["tailwind_bundle"])
+                    self.assertEqual(
+                        result["asset_pipeline"]["python_hooks"],
+                        ["vela_test_collect_hook:build"],
+                    )
+                finally:
+                    os.chdir(previous)
         finally:
-            os.chdir(previous)
             sys.modules.pop(hook_module.__name__, None)
 
 
