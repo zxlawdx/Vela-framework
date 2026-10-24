@@ -23,7 +23,15 @@ class ShellIsolationRegressionTests(unittest.TestCase):
         self.assertNotIn("-webkit-user-select: none", self.style)
 
     def test_shell_does_not_style_application_elements_globally(self):
-        forbidden = ("*", "main", "dialog", "button", "canvas", "[contenteditable]", ".textLayer")
+        forbidden = (
+            "*",
+            "main",
+            "dialog",
+            "button",
+            "canvas",
+            "[contenteditable]",
+            ".textLayer",
+        )
         selectors = []
         for block in self.style.split("{")[:-1]:
             selector = block.rsplit("}", 1)[-1].strip()
@@ -79,6 +87,25 @@ class ShellIsolationRegressionTests(unittest.TestCase):
         self.assertIn("getContext('webgl')", self.script)
         self.assertIn("getContext('webgl2')", self.script)
         self.assertIn("localStorage.setItem", self.script)
+
+    def test_bootstrap_waits_for_real_pywebview_bridge_methods(self):
+        self.assertIn("function velaBridgeReady()", self.script)
+        self.assertIn("typeof api?.get_config === 'function'", self.script)
+        self.assertIn("typeof api?.navigate === 'function'", self.script)
+        self.assertNotIn("if (window.pywebview?.api) Vela.init()", self.script)
+        self.assertIn("if (velaBridgeReady()) Vela.init()", self.script)
+
+    def test_failed_or_concurrent_init_can_retry_safely(self):
+        self.assertIn("_initializing: false", self.script)
+        self.assertIn("if (this._initialized || this._initializing) return", self.script)
+        self.assertIn("this._initializing = true", self.script)
+        self.assertIn("this._initialized = false", self.script)
+        self.assertIn("this._initializing = false", self.script)
+        get_config_index = self.script.index("await window.pywebview.api.get_config()")
+        navigate_index = self.script.index("await this.navigate(entry)")
+        initialized_index = self.script.index("this._initialized = true", navigate_index)
+        self.assertLess(get_config_index, navigate_index)
+        self.assertLess(navigate_index, initialized_index)
 
 
 if __name__ == "__main__":

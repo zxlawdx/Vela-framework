@@ -34,28 +34,46 @@ class ApiFacade:
             self._current.reset(token)
 
     def add_route(self, method: str, path: str, handler: Callable[..., Any]):
-        return self._target().add_route(method, path, handler)
+        """Register on the reusable blueprint and on the active app router.
+
+        Consumer API modules are often imported for the first time while
+        ``VelaApp.register_app`` has a router bound. Persisting that decorator in
+        the blueprint makes a second VelaApp instance in the same process receive
+        the same routes even though Python correctly reuses the cached module.
+        """
+        blueprint_route = self._blueprint.add_route(method, path, handler)
+        current = self._current.get()
+        if current is not None and current is not self._blueprint:
+            return current.add_route(method, path, handler)
+        return blueprint_route
+
+    def _decorator(self, method: str, path: str):
+        def decorator(func: Callable[..., Any]):
+            self.add_route(method, path, func)
+            return func
+
+        return decorator
 
     def get(self, path: str):
-        return self._target().get(path)
+        return self._decorator("GET", path)
 
     def head(self, path: str):
-        return self._target().head(path)
+        return self._decorator("HEAD", path)
 
     def post(self, path: str):
-        return self._target().post(path)
+        return self._decorator("POST", path)
 
     def put(self, path: str):
-        return self._target().put(path)
+        return self._decorator("PUT", path)
 
     def delete(self, path: str):
-        return self._target().delete(path)
+        return self._decorator("DELETE", path)
 
     def patch(self, path: str):
-        return self._target().patch(path)
+        return self._decorator("PATCH", path)
 
     def options(self, path: str):
-        return self._target().options(path)
+        return self._decorator("OPTIONS", path)
 
 
 api = ApiFacade()

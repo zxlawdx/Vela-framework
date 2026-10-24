@@ -7,6 +7,7 @@ from wsgiref.util import setup_testing_defaults
 
 from bottle import BaseRequest
 
+from vela.api import ApiFacade
 from vela.core.api_router import ApiRouter
 from vela.core.api_server import ApiServer
 from vela.core.http import Request
@@ -67,6 +68,22 @@ class ApiPrefixRegressionTests(unittest.TestCase):
         status, body = wsgi_request(server.app, "/api/devices/abc-123")
         self.assertTrue(status.startswith("200"))
         self.assertEqual(json.loads(body)["device"], "abc-123")
+
+    def test_bound_decorator_is_reusable_by_later_app_router(self):
+        facade = ApiFacade()
+        first = facade.new_router()
+
+        with facade.bind(first):
+
+            @facade.get("/cached-module")
+            def cached_module_handler():
+                return {"ok": True}
+
+        self.assertIsNotNone(first.get_route("GET", "/cached-module"))
+        second = facade.new_router()
+        route = second.get_route("GET", "/cached-module")
+        self.assertIsNotNone(route)
+        self.assertIs(route.handler, cached_module_handler)
 
 
 class LargeBodyRegressionTests(unittest.TestCase):

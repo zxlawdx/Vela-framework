@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
-"""Cross-platform static collection and optional Tailwind compilation."""
+"""Cross-platform static collection and optional asset preparation."""
 
 from __future__ import annotations
 
@@ -9,6 +9,11 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from vela.cli.asset_pipeline import (
+    AssetPipelineError,
+    _confirm_install,
+    run_project_asset_pipeline,
+)
 from vela.cli.tools import resolve_node_tool
 from vela.log.logger import VelaLogger
 from vela.static import AssetManifest
@@ -87,17 +92,25 @@ def _ensure_node_available(project_root: str = ".") -> bool:
     )
 
 
-def _ensure_tailwind_cli(project_root: str, verbose: bool) -> bool:
+def _ensure_tailwind_cli(
+    project_root: str,
+    verbose: bool,
+    *,
+    assume_yes: bool = False,
+    allow_install: bool = True,
+) -> bool:
     if resolve_node_tool("tailwindcss", project_root=project_root):
         return True
     npm = resolve_node_tool("npm", project_root=project_root)
     if not npm:
         return False
+    command = [npm, "install", "--save-dev", "tailwindcss@3.4.17"]
+    _confirm_install(command, assume_yes=assume_yes, allow_install=allow_install)
     if verbose:
-        print("    -> Instalando Tailwind CLI via npm (apenas uma vez)...")
+        print("    -> Instalando Tailwind CLI local via npm...")
     try:
         result = subprocess.run(
-            [npm, "install", "--save-dev", "tailwindcss@3.4.17"],
+            command,
             cwd=project_root,
             capture_output=True,
             text=True,
@@ -157,16 +170,27 @@ def run_tailwind_pipeline(
     output_dir: str,
     minify: bool = False,
     verbose: bool = True,
+    *,
+    assume_yes: bool = False,
+    allow_install: bool = True,
 ) -> bool:
     detection = _detect_tailwind(project_root)
     if not detection["found"]:
         return False
     if not _ensure_node_available(project_root):
-        logger.warning("Node.js indisponível — pipeline Tailwind ignorado.")
-        return False
+        raise AssetPipelineError(
+            "Node.js/npm não encontrado(s), mas Tailwind foi detectado. Instale Node.js "
+            "(recomendado: versão LTS, com npm) e execute novamente "
+            "`python manage.py collectstatic`."
+        )
     _create_tailwind_config(project_root)
-    if not _ensure_tailwind_cli(project_root, verbose):
-        return False
+    if not _ensure_tailwind_cli(
+        project_root,
+        verbose,
+        assume_yes=assume_yes,
+        allow_install=allow_install,
+    ):
+        raise AssetPipelineError("Tailwind CLI não pôde ser preparado.")
     css_dir = Path(output_dir) / "css"
     css_dir.mkdir(parents=True, exist_ok=True)
     input_css = css_dir / "tailwind.input.css"
@@ -225,20 +249,51 @@ def collect_static(
     verbose: bool = True,
     skip_tailwind: bool = False,
     minify: bool = False,
+    *,
+    asset_config: dict | None = None,
+    assume_yes: bool = False,
+    allow_install: bool = True,
 ) -> dict:
-    """Collect app assets into the runtime collected-static directory.
+    """Prepare project assets and collect them into the runtime static directory.
 
     ``output_dir`` is collected runtime data, not the build workspace (``.vela-build``)
     and not the final distribution directory (``dist``).
+
+    When ``config.settings.ASSETS`` is supplied by the CLI, project-specific npm
+    scripts and Python hooks run before files are copied. Missing project-local
+    npm dependencies require explicit confirmation, unless ``assume_yes`` is set.
     """
     project_root = Path.cwd()
     output = (project_root / output_dir).resolve()
     output.mkdir(parents=True, exist_ok=True)
-    stats = _collect_app_statics(str(project_root / apps_dir), str(output), verbose)
+
+    pipeline_report = run_project_asset_pipeline(
+        project_root,
+        asset_config,
+        assume_yes=assume_yes,
+        allow_install=allow_install,
+        verbose=verbose,
+    )
+
+    config_tailwind = True
+    if asset_config is not None:
+        config_tailwind = bool(asset_config.get("tailwind", True))
     tailwind_ok = False
-    if not skip_tailwind:
+    if not skip_tailwind and config_tailwind:
         tailwind_ok = run_tailwind_pipeline(
-            str(project_root), str(output), minify=minify, verbose=verbose
+            str(project_root),
+            str(output),
+            minify=minify,
+            verbose=verbose,
+            assume_yes=assume_yes,
+            allow_install=allow_install,
         )
+
+    stats = _collect_app_statics(str(project_root / apps_dir), str(output), verbose)
     manifest = _generate_manifest(str(output), verbose)
-    return {**stats, "tailwind_bundle": tailwind_ok, "manifest": manifest}
+    return {
+        **stats,
+        "tailwind_bundle": tailwind_ok,
+        "asset_pipeline": pipeline_report,
+        "manifest": manifest,
+    }

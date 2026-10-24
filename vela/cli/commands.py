@@ -20,7 +20,7 @@ Comandos:
   runapp                    Inicia o app desktop
   shell                     Abre o shell interativo
   startapp <nome>           Cria app em apps/
-  collectstatic             Coleta assets em staticfiles/
+  collectstatic             Prepara dependências e coleta assets em staticfiles/
   assets verify             Valida shell, manifest e assets offline
   self-test                 Executa smoke test do runtime real
   routes                    Lista rotas visuais
@@ -128,21 +128,41 @@ class CommandRunner:
                 handle.write(content)
 
     def cmd_collectstatic(self, args):
+        from vela.cli.asset_pipeline import AssetPipelineError
         from vela.cli.collectstatic import collect_static
 
         output = "staticfiles"
         skip_tailwind = "--no-tailwind" in args
         minify = "--minify" in args
+        assume_yes = "--yes" in args
+        allow_install = "--no-install" not in args
         for arg in args:
             if arg.startswith("--output="):
                 output = arg.split("=", 1)[1]
-        return collect_static(
-            apps_dir="apps",
-            output_dir=output,
-            verbose=True,
-            skip_tailwind=skip_tailwind,
-            minify=minify,
-        )
+
+        asset_config = None
+        target = "config.settings"
+        try:
+            settings = importlib.import_module(target)
+            asset_config = getattr(settings, "ASSETS", None)
+        except ModuleNotFoundError as exc:
+            if not is_missing_target(exc, target):
+                raise
+
+        try:
+            return collect_static(
+                apps_dir="apps",
+                output_dir=output,
+                verbose=True,
+                skip_tailwind=skip_tailwind,
+                minify=minify,
+                asset_config=asset_config,
+                assume_yes=assume_yes,
+                allow_install=allow_install,
+            )
+        except AssetPipelineError as exc:
+            print(f"Erro ao preparar assets: {exc}")
+            return 2
 
     def cmd_assets(self, args):
         from vela.cli.assets import print_asset_report, verify_assets
