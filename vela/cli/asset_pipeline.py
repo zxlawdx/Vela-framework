@@ -2,8 +2,8 @@
 """Declarative project asset preparation for ``collectstatic``.
 
 Projects may opt into Node/npm preparation and Python asset hooks through the
-``ASSETS`` setting.  Vela never installs system packages: when Node.js/npm is
-missing the command fails with an actionable message.  Project-local npm
+``ASSETS`` setting. Vela never installs system packages: when Node.js/npm is
+missing the command fails with an actionable message. Project-local npm
 packages may be installed only after explicit user approval (or ``--yes``).
 """
 
@@ -49,7 +49,11 @@ def _node_tools(project_root: Path) -> tuple[str, str]:
     npm = resolve_node_tool("npm", project_root=str(project_root))
     if node and npm:
         return node, npm
-    missing = "Node.js e npm" if not node and not npm else ("Node.js" if not node else "npm")
+    missing = (
+        "Node.js e npm"
+        if not node and not npm
+        else ("Node.js" if not node else "npm")
+    )
     raise AssetPipelineError(
         f"{missing} não encontrado(s). O pipeline de assets deste projeto depende deles. "
         "Instale Node.js (recomendado: versão LTS, com npm) e execute novamente "
@@ -128,7 +132,9 @@ def _install_node_dependencies(
     return install_mode
 
 
-def _run_npm_script(project_root: Path, npm: str, script: str, *, verbose: bool) -> None:
+def _run_npm_script(
+    project_root: Path, npm: str, script: str, *, verbose: bool
+) -> None:
     if not isinstance(script, str) or not script.strip():
         raise AssetPipelineError("Scripts npm em ASSETS devem ser strings não vazias.")
     if verbose:
@@ -152,7 +158,8 @@ def _run_python_hook(project_root: Path, target: str, *, verbose: bool) -> None:
         missing = exc.name or module_name
         raise AssetPipelineError(
             f"Não foi possível carregar o hook {target!r}; módulo/dependência Python ausente: "
-            f"{missing!r}. Instale as dependências Python do projeto e execute collectstatic novamente."
+            f"{missing!r}. Instale as dependências Python do projeto e execute "
+            "collectstatic novamente."
         ) from exc
     callback = getattr(module, callable_name, None)
     if not callable(callback):
@@ -183,7 +190,7 @@ def run_project_asset_pipeline(
             "tailwind": False,              # consumed by collectstatic
         }
 
-    Node/npm themselves are never installed by Vela.  Missing local npm
+    Node/npm themselves are never installed by Vela. Missing local npm
     dependencies are installed only after an interactive confirmation, or when
     ``assume_yes`` is explicitly enabled by the CLI ``--yes`` flag.
     """
