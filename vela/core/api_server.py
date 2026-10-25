@@ -445,7 +445,6 @@ class ApiServer:
 
     def start(self):
         self.register_routes()
-        desired = self.requested_port
         bind_port = self._select_bind_port()
 
         if self.server == "waitress":
