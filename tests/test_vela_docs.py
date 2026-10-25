@@ -98,7 +98,7 @@ def test_empty_missing_description_and_unique_ids():
 def test_no_unsafe_html_or_execution_in_docs_modules():
     files = Path("vela/docs/static/js").glob("*.js")
     for path in files:
-        source = path.read_text()
+        source = path.read_text(encoding="utf-8")
         assert "innerHTML" not in source
         assert "eval(" not in source
         assert "new Function" not in source
