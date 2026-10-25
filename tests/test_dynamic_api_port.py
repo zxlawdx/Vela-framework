@@ -86,7 +86,9 @@ class DynamicApiPortTests(unittest.TestCase):
             finally:
                 server.stop()
 
-    def test_waitress_start_raises_when_preferred_port_is_busy_and_auto_port_disabled(self):
+    def test_waitress_start_raises_when_preferred_port_is_busy_and_auto_port_disabled(
+        self,
+    ):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as busy_socket:
             busy_socket.bind((self.HOST, 0))
             busy_socket.listen(1)
