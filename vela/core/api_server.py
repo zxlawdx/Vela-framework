@@ -433,34 +433,56 @@ class ApiServer:
             return int(adj.port)
         return int(fallback)
 
+    def _select_bind_port(self) -> int:
+        desired = self.requested_port
+        if desired == 0:
+            return 0
+        if self.is_port_available(self.host, desired):
+            return desired
+        if not self.auto_port:
+            raise RuntimeError(f"A porta {desired} já está em uso em {self.host}.")
+        return 0
+
     def start(self):
         self.register_routes()
+        bind_port = self._select_bind_port()
+
         if self.server == "waitress":
-            desired = self.requested_port
             try:
-                self._waitress_server = self._create_waitress_server(desired)
-            except OSError:
-                if not self.auto_port:
-                    raise RuntimeError(f"A porta {desired} já está em uso em {self.host}.")
-                self._waitress_server = self._create_waitress_server(0)
-            self.port = self._bound_port(self._waitress_server, desired)
+                self._waitress_server = self._create_waitress_server(bind_port)
+            except OSError as exc:
+                if not self.auto_port or bind_port == 0:
+                    raise RuntimeError(
+                        f"Não foi possível iniciar a API em {self.host}:{bind_port}."
+                    ) from exc
+                bind_port = 0
+                self._waitress_server = self._create_waitress_server(bind_port)
+            self.port = self._bound_port(self._waitress_server, bind_port)
+            if self.port <= 0:
+                self._waitress_server.close()
+                self._waitress_server = None
+                raise RuntimeError("Waitress não informou a porta TCP efetivamente vinculada.")
             self._thread = Thread(target=self._waitress_server.run, daemon=True, name="vela-http")
             self._thread.start()
             return self.port
+
         if self.server == "bottle":
-            desired = self.requested_port
             try:
-                self._bottle_server = make_server(self.host, desired, self.app)
-            except OSError:
-                if not self.auto_port:
-                    raise RuntimeError(f"A porta {desired} já está em uso em {self.host}.")
-                self._bottle_server = make_server(self.host, 0, self.app)
+                self._bottle_server = make_server(self.host, bind_port, self.app)
+            except OSError as exc:
+                if not self.auto_port or bind_port == 0:
+                    raise RuntimeError(
+                        f"Não foi possível iniciar a API em {self.host}:{bind_port}."
+                    ) from exc
+                bind_port = 0
+                self._bottle_server = make_server(self.host, bind_port, self.app)
             self.port = int(self._bottle_server.server_port)
             self._thread = Thread(
                 target=self._bottle_server.serve_forever, daemon=True, name="vela-http"
             )
             self._thread.start()
             return self.port
+
         raise ValueError(f"Servidor desconhecido: {self.server}")
 
     def wait_until_ready(self, timeout: float = 10.0):
