@@ -60,3 +60,7 @@ internos, mesmo em localhost. A porta dinâmica reduz conflitos, mas
 **não substitui autenticação** em APIs que exponham ações sensíveis.
 Não habilite `host=0.0.0.0` sem proteção adicional. Os endpoints
 automáticos não fazem autenticação.
+
+## Vela Docs
+
+A interface integrada, configuração e limitações estão em [VELA_DOCS.md](VELA_DOCS.md).

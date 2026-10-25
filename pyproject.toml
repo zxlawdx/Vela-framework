@@ -71,6 +71,7 @@ vela = [
     "templates/project/**/*",
     "templates/project/**/.gitkeep",
     "core/shell.html",
+    "docs/static/**/*",
 ]
 
 [build-system]

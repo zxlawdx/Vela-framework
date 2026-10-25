@@ -1,2 +1,4 @@
 include LICENSE NOTICE.md CITATION.cff README.md
 recursive-include vela/templates/project *
+
+recursive-include vela/docs/static *

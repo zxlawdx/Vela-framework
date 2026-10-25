@@ -44,6 +44,8 @@ class ApiConfig:
     server: str = "waitress"
     workers: int = 4
     docs_enabled: bool = True
+    docs_title: str | None = None
+    docs_version: str | None = None
     allow_remote: bool = False
     cors_origins: tuple[str, ...] = ()
     max_body_size: int = 1_048_576
