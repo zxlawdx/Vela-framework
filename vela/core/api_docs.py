@@ -1,18 +1,36 @@
 # SPDX-License-Identifier: MPL-2.0
-"""OpenAPI básico e interface offline de testes."""
+"""OpenAPI generation from the existing per-application API registry."""
 
 from __future__ import annotations
 
 import inspect
+import re
+import types
+from copy import deepcopy
+from typing import Any, Literal, Union, get_args, get_origin
 
-from vela.core.http import Request
+from vela.core.http import Request, Response
 
 
-def _schema(annotation):
-    if annotation is inspect.Signature.empty or annotation is Request:
-        return {"type": "object"}
+def _schema(annotation: Any) -> dict:
+    if annotation in (inspect.Signature.empty, Any, Request, Response):
+        return {}
+    if annotation is None or annotation is type(None):
+        return {"nullable": True}
     if hasattr(annotation, "model_json_schema"):
-        return annotation.model_json_schema()
+        schema = deepcopy(annotation.model_json_schema(ref_template="#/components/schemas/{model}"))
+        return schema
+    origin, args = get_origin(annotation), get_args(annotation)
+    if origin in (Union, types.UnionType):
+        choices = [_schema(a) for a in args if a is not type(None)]
+        schema = choices[0] if len(choices) == 1 else {"anyOf": choices}
+        return {**schema, **({"nullable": True} if type(None) in args else {})}
+    if origin is Literal:
+        return {"enum": list(args), **(_schema(type(args[0])) if args else {})}
+    if origin in (list, tuple, set):
+        return {"type": "array", "items": _schema(args[0]) if args else {}}
+    if origin is dict:
+        return {"type": "object", "additionalProperties": _schema(args[1]) if len(args) > 1 else {}}
     return {
         str: {"type": "string"},
         int: {"type": "integer"},
@@ -20,27 +38,60 @@ def _schema(annotation):
         float: {"type": "number"},
         dict: {"type": "object"},
         list: {"type": "array", "items": {}},
-    }.get(annotation, {"type": "object"})
+    }.get(annotation, {})
 
 
-def build_openapi(routes, prefix="/api"):
+def _register_schema(annotation: Any, components: dict) -> dict:
+    schema = _schema(annotation)
+
+    def collect(node):
+        if isinstance(node, dict):
+            definitions = node.pop("$defs", {})
+            for name, definition in definitions.items():
+                collect(definition)
+                components[name] = definition
+            for value in node.values():
+                collect(value)
+        elif isinstance(node, list):
+            for value in node:
+                collect(value)
+
+    collect(schema)
+    if hasattr(annotation, "model_json_schema"):
+        name = annotation.__name__
+        components[name] = schema
+        return {"$ref": f"#/components/schemas/{name}"}
+    return schema
+
+
+def build_openapi(routes, prefix="/api", *, title=None, version=None):
     import vela
 
     spec = {
         "openapi": "3.0.3",
-        "info": {"title": "Vela Local API", "version": vela.__version__},
+        "info": {"title": title or "Vela Local API", "version": version or vela.__version__},
+        "servers": [{"url": "/"}],
         "paths": {},
+        "components": {"schemas": {}},
     }
+    components = spec["components"]["schemas"]
+    used_ids = set()
     for route in routes:
-        method = route.method.lower()
-        path = prefix + route.path
+        # Bottle is the routing source of truth; do not invent a second router.
+        path = re.sub(r"<([A-Za-z_]\w*)(?::[^>]*)?>", r"{\1}", prefix + route.path)
         handler = route.handler
-        summary = (inspect.getdoc(handler) or getattr(handler, "__name__", "handler")).splitlines()[
-            0
-        ]
+        doc = inspect.getdoc(handler) or ""
+        name = getattr(handler, "__name__", "handler")
+        metadata = deepcopy(getattr(handler, "__vela_openapi__", {}))
+        op_id = metadata.get("operationId", name)
+        if op_id in used_ids:
+            op_id = f"{op_id}_{route.method.lower()}_{len(used_ids)}"
+        used_ids.add(op_id)
         operation = {
-            "summary": summary,
-            "operationId": getattr(handler, "__name__", "handler"),
+            "summary": doc.splitlines()[0] if doc else name,
+            "description": doc,
+            "operationId": op_id,
+            "tags": [route.path.strip("/").split("/")[0] or "API"],
             "responses": {
                 "200": {"description": "Sucesso"},
                 "400": {"description": "Requisição inválida"},
@@ -48,25 +99,39 @@ def build_openapi(routes, prefix="/api"):
                 "500": {"description": "Erro interno"},
             },
         }
-        params = route.signature.parameters
-        if method in ("post", "put", "patch") and params:
-            first = next(iter(params.values()))
-            if first.annotation is not Request:
+        path_params = []
+        for match in re.finditer(r"<([A-Za-z_]\w*)(?::([^>]*))?>", route.path):
+            kind = {"int": "integer", "float": "number"}.get(match[2], "string")
+            path_params.append(
+                {"name": match[1], "in": "path", "required": True, "schema": {"type": kind}}
+            )
+        if path_params:
+            operation["parameters"] = path_params
+        params = list(route.signature.parameters.values())
+        if route.method in {"POST", "PUT", "PATCH"} and params:
+            first = params[0]
+            annotation = route.type_hints.get(first.name, first.annotation)
+            if annotation is not Request:
                 operation["requestBody"] = {
-                    "required": False,
-                    "content": {"application/json": {"schema": _schema(first.annotation)}},
+                    "required": hasattr(annotation, "model_validate"),
+                    "content": {
+                        "application/json": {"schema": _register_schema(annotation, components)}
+                    },
                 }
-        spec["paths"].setdefault(path, {})[method] = operation
+        annotation = route.type_hints.get("return", route.signature.return_annotation)
+        result_schema = _register_schema(annotation, components)
+        if result_schema:
+            operation["responses"]["200"]["content"] = {
+                "application/json": {"schema": result_schema}
+            }
+        operation.update(metadata)
+        operation["operationId"] = op_id
+        # Always retain path parameters even when explicit query/header metadata is supplied.
+        explicit = operation.get("parameters", [])
+        operation["parameters"] = [
+            p
+            for p in path_params
+            if not any(q.get("name") == p["name"] and q.get("in") == "path" for q in explicit)
+        ] + explicit
+        spec["paths"].setdefault(path, {})[route.method.lower()] = operation
     return spec
-
-
-DOCS_HTML = """<!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vela — Documentação da API</title>
-<style>:root{font:15px system-ui,sans-serif;color:#e5edfa;background:#0d1624}*{box-sizing:border-box}body{max-width:1100px;margin:auto;padding:36px 20px}h1{font-size:2rem;margin:0 0 8px}p{color:#aabbd2}main{margin-top:25px}section{background:#17273b;border:1px solid #334764;border-radius:13px;padding:20px;margin-bottom:14px}header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}header strong{padding:5px 11px;border-radius:6px;background:#22354e}.get{color:#67d9aa}.post{color:#d1b0ff}.put{color:#f5cd85}.delete{color:#ff9999}code,textarea,pre{font-family:ui-monospace,monospace}textarea,pre{width:100%;background:#0d1624;color:#e5edfa;border:1px solid #354960;border-radius:8px;padding:12px;overflow:auto}textarea{min-height:100px}pre{white-space:pre-wrap;min-height:35px}button{background:#2685e9;color:#fff;border:none;border-radius:8px;padding:10px 18px;cursor:pointer}a{color:#90bfff}</style>
-</head><body><h1>Vela / API Docs</h1><p>Explore e teste as rotas da API local. Interface totalmente offline.</p><a id="schema-link">Abrir esquema OpenAPI</a><main id="routes" aria-live="polite"></main>
-<script>
-const schemaURL="__VELA_OPENAPI_PATH__";document.getElementById("schema-link").href=schemaURL;
-fetch(schemaURL).then(r=>r.json()).then(spec=>{const main=document.getElementById("routes");for(const [path,methods] of Object.entries(spec.paths)){for(const [method,op] of Object.entries(methods)){const section=document.createElement("section"),head=document.createElement("header"),verb=document.createElement("strong"),location=document.createElement("code"),summary=document.createElement("p"),body=document.createElement("textarea"),button=document.createElement("button"),output=document.createElement("pre");verb.className=method;verb.textContent=method.toUpperCase();location.textContent=path;head.append(verb,location);summary.textContent=op.summary;body.value="{}";if(method==="get"||method==="delete")body.hidden=true;button.textContent="Executar";output.textContent="Ainda não executado";button.onclick=async()=>{const options={method:method.toUpperCase(),headers:{}};if(!body.hidden){options.headers["Content-Type"]="application/json";options.body=body.value}try{const response=await fetch(path,options);output.textContent=response.status+" "+await response.text()}catch(error){output.textContent=String(error)}};section.append(head,summary,body,button,output);main.append(section)}}}).catch(error=>document.querySelector("main").textContent=String(error));
-</script></body></html>"""

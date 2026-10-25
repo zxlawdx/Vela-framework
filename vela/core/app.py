@@ -117,6 +117,8 @@ class VelaApp:
                     auto_port=c["api"].get("auto_port", True),
                     server=c["api"].get("server", "waitress"),
                     docs_enabled=c["api"].get("docs_enabled", True),
+                    docs_title=c["api"].get("docs_title"),
+                    docs_version=c["api"].get("docs_version"),
                     workers=c["api"].get("workers", 4),
                     allow_remote=c["api"].get("allow_remote", False),
                     cors_origins=c["api"].get("cors_origins", ()),

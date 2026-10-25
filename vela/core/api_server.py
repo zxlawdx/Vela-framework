@@ -17,8 +17,9 @@ from wsgiref.simple_server import make_server
 
 from bottle import BaseRequest, Bottle, request, response, static_file
 
-from vela.core.api_docs import DOCS_HTML, build_openapi
+from vela.core.api_docs import build_openapi
 from vela.core.http import Request, Response, ResponseEncoder
+from vela.docs import STATIC_DIR
 from vela.exceptions import ApiValidationError, ConfigurationError
 from vela.log.logger import VelaLogger
 from vela.static import StaticResolver
@@ -42,10 +43,14 @@ class ApiServer:
         allow_remote=False,
         cors_origins=(),
         max_body_size=1_048_576,
+        docs_title=None,
+        docs_version=None,
     ):
         self.api_router = api_router
         self.server = server
         self.docs_enabled = bool(docs_enabled)
+        self.docs_title = docs_title
+        self.docs_version = docs_version
         self.workers = max(1, int(workers))
         self.started_at = time.monotonic()
         self.host = str(host)
@@ -138,7 +143,13 @@ class ApiServer:
         def openapi():
             response.content_type = "application/json; charset=utf-8"
             return json.dumps(
-                build_openapi(self.api_router.routes, prefix=self.prefix), ensure_ascii=False
+                build_openapi(
+                    self.api_router.routes,
+                    prefix=self.prefix,
+                    title=self.docs_title,
+                    version=self.docs_version,
+                ),
+                ensure_ascii=False,
             )
 
         if self.docs_enabled:
@@ -146,7 +157,22 @@ class ApiServer:
             @self.app.get(self.prefix + "/docs")
             def docs():
                 response.content_type = "text/html; charset=utf-8"
-                return DOCS_HTML.replace("__VELA_OPENAPI_PATH__", self.prefix + "/openapi.json")
+                content = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+                return content.replace(
+                    "__VELA_OPENAPI_PATH__", escape(self.prefix + "/openapi.json", quote=True)
+                ).replace("__VELA_DOCS_ASSETS__", escape(self.prefix + "/docs/assets", quote=True))
+
+            @self.app.get(self.prefix + "/docs/assets/<filepath:path>")
+            def docs_asset(filepath):
+                try:
+                    target = self._safe_static_target(STATIC_DIR.resolve(), filepath)
+                except ValueError:
+                    response.status = 404
+                    return "Not found"
+                response.headers["X-Content-Type-Options"] = "nosniff"
+                return static_file(
+                    str(target.relative_to(STATIC_DIR.resolve())), root=str(STATIC_DIR)
+                )
 
         @self.app.get("/__vela__/shell")
         def serve_shell():
