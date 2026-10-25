@@ -13,7 +13,7 @@ def register_routes(router):
         name="home",
         title="Home",
         icon="🏠",
-        layout="default",
-        show_in_sidebar=True,
+        layout="blank",
+        show_in_sidebar=False,
         order=0,
     )

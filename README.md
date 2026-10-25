@@ -851,3 +851,7 @@ A MPL preserva avisos de autoria nos arquivos cobertos, mas não obriga aplicaç
 Feito com ☕, Python e muita iteração em aplicações reais.
 
 </div>
+
+## Aplicação inicial
+
+Novos projetos abrem o [Starter App oficial](docs/STARTER_APP.md), com contador Python ↔ JavaScript, temas e assets locais.
