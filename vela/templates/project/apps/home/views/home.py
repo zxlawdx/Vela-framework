@@ -1,21 +1,14 @@
-"""
-apps.home.views.home
-View da página principal.
+"""Render the starter through Vela's existing template engine."""
 
-No Vela, uma view é uma função Python que recebe params
-e retorna uma string HTML. Simples assim.
-"""
+from config.settings import APP_TITLE
 
-
-from vela.template_engine.engine import render_template
+from vela import __version__
+from vela.template_engine import render_template
 
 
 def home_view(params: dict) -> str:
-    """Retorna o HTML da página Home."""
-
-    return render_template("apps/home/templates/home.html", context={
-        "titulo": "Home",
-        "descricao": "Bem-vindo ao Vela.",
-    },
-        router=params["router"]
+    return render_template(
+        "apps/home/templates/home.html",
+        context={"app_title": APP_TITLE, "vela_version": __version__},
+        router=params["router"],
     )

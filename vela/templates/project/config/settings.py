@@ -5,7 +5,7 @@ Configurações globais da aplicação Vela.
 
 # ─── App ──────────────────────────────────────────────────────────────────────
 
-APP_TITLE = "Meu App Vela"
+APP_TITLE = "__VELA_PROJECT_TITLE__"
 APP_VERSION = "0.2.0"
 APP_ICON = ""
 APP_AUTHOR = ""
@@ -17,7 +17,7 @@ ENTRY_ROUTE = "/home"
 
 # ─── Janela ───────────────────────────────────────────────────────────────────
 
-WINDOW_WIDTH  = 1280
+WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 800
 
 # ─── Layout global ────────────────────────────────────────────────────────────
@@ -25,8 +25,8 @@ WINDOW_HEIGHT = 800
 # Pode ser sobrescrito no VelaApp() ou por rota (layout="blank").
 
 LAYOUT = {
-    "sidebar": True,
-    "topbar": True,
+    "sidebar": False,
+    "topbar": False,
     "theme": "light",
 }
 

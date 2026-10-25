@@ -6,13 +6,23 @@ from importlib.resources import files
 from pathlib import Path
 
 
-def startproject(project_name: str):
+def startproject(project_name: str) -> Path | None:
     target = Path.cwd() / project_name
     if target.exists():
         print(f"Erro: a pasta '{project_name}' já existe.")
         return
     shutil.copytree(files("vela").joinpath("templates/project"), target)
+    title = target.name.replace("-", " ").replace("_", " ").title()
+    settings = target / "config" / "settings.py"
+    settings.write_text(
+        settings.read_text(encoding="utf-8").replace(
+            '"__VELA_PROJECT_TITLE__"', json.dumps(title, ensure_ascii=False)
+        ),
+        encoding="utf-8",
+    )
     print(f"Projeto '{project_name}' criado com sucesso!")
+    print(f"Execute: cd {project_name} e python manage.py runapp")
+    return target
 
 
 def main():

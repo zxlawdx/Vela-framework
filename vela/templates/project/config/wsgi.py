@@ -1,49 +1,28 @@
-"""
-config/wsgi.py
-Ponto de entrada da aplicação Vela.
+"""Application entry point: collect local assets, register Home and start Vela."""
 
-Define apps instalados e inicializa o VelaApp.
+import sys
 
-Equivalente ao wsgi.py + urls.py do Django.
-"""
-
+from config import settings
+from config.bridge import StarterBridge
+from vela.cli.collectstatic import collect_static
 from vela.core.app import VelaApp
 
-# ─── Apps instalados ─────────────────────────────────────────────────────────
-# Adicione seus apps aqui, na ordem em que deseja que apareçam na sidebar.
+INSTALLED_APPS = ["apps.home"]
 
-INSTALLED_APPS = [
-    "apps.login",
-    "apps.home",
-    "apps.dashboard",
-]
-
-
-# ─── Função de boot ───────────────────────────────────────────────────────────
 
 def run():
-    # Opção A — via settings_module (legado, compatível)
-    app = VelaApp(settings_module="config.settings")
-
-    # Opção B — configuração direta (override)
-    # app = VelaApp(
-    #     title="Meu App",
-    #     layout={
-    #         "sidebar": True,
-    #         "topbar":  True,
-    #     }
-    # )
-
-    # Opção C — app sem sidebar (ex: ferramenta minimalista)
-    # app = VelaApp(
-    #     title="Mini Tool",
-    #     layout={
-    #         "sidebar": False,
-    #         "topbar":  True,
-    #     }
-    # )
-
+    # The packaged executable already includes collected assets.
+    if not getattr(sys, "frozen", False):
+        report = collect_static(
+            output_dir=settings.STATIC_ROOT,
+            skip_tailwind=True,
+            asset_config={"tailwind": False},
+            allow_install=False,
+            verbose=False,
+        )
+        if report["errors"]:
+            raise RuntimeError("Falha ao coletar os assets locais do starter.")
+    app = VelaApp(settings_module="config.settings", bridge_class=StarterBridge)
     for app_name in INSTALLED_APPS:
         app.register_app(app_name)
-
     app.run()
