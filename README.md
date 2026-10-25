@@ -1,272 +1,322 @@
-> **Vela 0.2.0 (prévia)**: o framework agora inclui
-> [assistente gráfico Next/Next](docs/DISTRIBUTION.md),
-> [compilação nativa e instalação](docs/DISTRIBUTION.md),
-> [API OpenAPI/Waitress](docs/API.md) e
-> [serviços desktop](docs/RUNTIME.md).
-> Execute `python manage.py init-process:instalation` na raiz do projeto;
-> também estão disponíveis `buildapp`, `doctor`, `installapp` e
-> `makeworkflow`. Consulte o [changelog](CHANGELOG.md) para limitações.
-
 <div align="center">
 
-<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0f172a"/>
-      <stop offset="100%" stop-color="#1e3a5f"/>
-    </linearGradient>
-    <linearGradient id="sail1" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f8fafc"/>
-      <stop offset="100%" stop-color="#cbd5e1"/>
-    </linearGradient>
-    <linearGradient id="sail2" x1="1" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#e2e8f0"/>
-      <stop offset="100%" stop-color="#94a3b8"/>
-    </linearGradient>
-    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1d4ed8"/>
-      <stop offset="100%" stop-color="#1e3a8a"/>
-    </linearGradient>
-    <linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#334155"/>
-      <stop offset="100%" stop-color="#1e293b"/>
-    </linearGradient>
-  </defs>
-  <rect width="160" height="160" rx="24" fill="url(#sky)"/>
-  <circle cx="20"  cy="18" r="1"   fill="white" opacity="0.7"/>
-  <circle cx="45"  cy="10" r="0.8" fill="white" opacity="0.5"/>
-  <circle cx="130" cy="14" r="1.2" fill="white" opacity="0.8"/>
-  <circle cx="148" cy="28" r="0.7" fill="white" opacity="0.5"/>
-  <circle cx="110" cy="8"  r="1"   fill="white" opacity="0.6"/>
-  <circle cx="72"  cy="15" r="0.6" fill="white" opacity="0.4"/>
-  <path d="M0 112 Q20 108 40 112 Q60 116 80 112 Q100 108 120 112 Q140 116 160 112 L160 160 L0 160Z" fill="url(#water)" opacity="0.9"/>
-  <path d="M0 118 Q30 114 60 118 Q90 122 120 118 Q140 115 160 118 L160 160 L0 160Z" fill="#1e3a8a" opacity="0.7"/>
-  <line x1="80" y1="30" x2="80" y2="110" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-  <path d="M80 35 L30 100 L80 100 Z" fill="url(#sail1)" opacity="0.95"/>
-  <path d="M80 50 L120 95 L80 95 Z" fill="url(#sail2)" opacity="0.9"/>
-  <path d="M38 110 Q50 118 80 120 Q110 118 122 110 L118 114 Q104 124 80 126 Q56 124 42 114Z" fill="url(#hull)"/>
-  <line x1="40" y1="100" x2="120" y2="100" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="80" y1="30" x2="118" y2="100" stroke="#94a3b8" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>
-  <line x1="80" y1="30" x2="42"  y2="100" stroke="#94a3b8" stroke-width="0.8" opacity="0.5" stroke-linecap="round"/>
-  <ellipse cx="80" cy="120" rx="18" ry="3" fill="white" opacity="0.08"/>
-</svg>
+# ⛵ Vela Framework
 
-<br/>
-
-# Vela Framework
-
-**Framework Python para aplicações desktop modernas — HTML, TailwindCSS e JavaScript, sem navegador.**
-
-<br/>
+**Framework Python para aplicações desktop com HTML, CSS e JavaScript, usando WebView e sem Electron.**
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776ab?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![pywebview](https://img.shields.io/badge/pywebview-6.2.1-2563eb?style=for-the-badge&logo=windowsterminal&logoColor=white)](https://pywebview.flowrl.com/)
-[![Bottle](https://img.shields.io/badge/Bottle-0.13.4-22c55e?style=for-the-badge)](https://bottlepy.org/)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-ready-06b6d4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![PyInstaller](https://img.shields.io/badge/PyInstaller-Windows%20build-e11d48?style=for-the-badge&logo=windows&logoColor=white)](https://pyinstaller.org/)
+[![Vela](https://img.shields.io/badge/Vela-0.2.2-2563eb?style=for-the-badge)](CHANGELOG.md)
+[![Status](https://img.shields.io/badge/status-alpha-f59e0b?style=for-the-badge)](CHANGELOG.md)
+[![License](https://img.shields.io/badge/license-MPL--2.0-8b5cf6?style=for-the-badge)](LICENSE)
 
-<br/>
-
-[![License](https://img.shields.io/badge/license-MPL--2.0-f59e0b?style=flat-square)](LICENSE)
+[![CI](https://github.com/zxlawdx/Vela-framework/actions/workflows/ci.yml/badge.svg)](https://github.com/zxlawdx/Vela-framework/actions/workflows/ci.yml)
 [![Stars](https://img.shields.io/github/stars/zxlawdx/Vela-framework?style=flat-square&color=f59e0b)](https://github.com/zxlawdx/Vela-framework/stargazers)
 [![Issues](https://img.shields.io/github/issues/zxlawdx/Vela-framework?style=flat-square&color=ef4444)](https://github.com/zxlawdx/Vela-framework/issues)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](https://github.com/zxlawdx/Vela-framework/pulls)
 
-<br/>
-
-> **Desktop nativo. Tecnologias web. Zero Electron.**
+> **Python no backend. Tecnologias web na interface. Runtime desktop empacotável.**
 >
-> Construa aplicações desktop com o stack que você já conhece — Python, HTML, CSS e JavaScript —
-> entregues numa janela nativa e leve via pywebview. Empacote para Windows com um único `.bat`.
+> O Vela organiza aplicações desktop em torno de um runtime Python, uma WebView e uma camada web local. O objetivo é permitir que interfaces HTML/CSS/JS convivam com serviços Python, API local, persistência, jobs, eventos e distribuição nativa sem exigir Electron.
 
 </div>
+
+> [!IMPORTANT]
+> A versão publicada no pacote é **0.2.2**. A branch `main` também contém alterações ainda não lançadas de hardening arquitetural e correções observadas em aplicações consumidoras reais. Consulte o [CHANGELOG](CHANGELOG.md) antes de fixar comportamento de produção.
 
 ---
 
 ## Índice
 
-- [Por que Vela?](#por-que-vela)
-- [Instalação rápida](#instalação-rápida)
-- [Estrutura do projeto](#estrutura-do-projeto)
-- [Padrões de desenvolvimento](#padrões-de-desenvolvimento)
-  - [settings.py](#settingspy)
-  - [wsgi.py](#wsgipy)
-  - [views — padrão moderno](#views--padrão-moderno)
-  - [API com noc/api.py separado](#api-com-nocapipy-separado)
-  - [Services e Repository](#services-e-repository)
-  - [launcher.py (Windows/Qt)](#launcherpy-windowsqt)
-- [Sistema de templates](#sistema-de-templates)
-- [Fluxo completo](#fluxo-completo)
-- [Build para Windows](#build-para-windows)
+- [O que é o Vela](#o-que-é-o-vela)
+- [Principais recursos](#principais-recursos)
+- [Arquitetura](#arquitetura)
+- [Instalação e primeiro projeto](#instalação-e-primeiro-projeto)
+- [Estrutura de projeto](#estrutura-de-projeto)
+- [Configuração](#configuração)
+- [Apps, rotas e views](#apps-rotas-e-views)
+- [API local](#api-local)
+- [Templates e segurança](#templates-e-segurança)
+- [Assets e collectstatic](#assets-e-collectstatic)
+- [Runtime: jobs, eventos, banco e desktop](#runtime-jobs-eventos-banco-e-desktop)
+- [Hot reload e lifecycle](#hot-reload-e-lifecycle)
+- [Build e distribuição](#build-e-distribuição)
+- [CLI](#cli)
 - [Compatibilidade](#compatibilidade)
-- [FAQ](#faq)
+- [Documentação](#documentação)
 - [Contribuindo](#contribuindo)
+- [Licença e citação](#licença-e-citação)
 
 ---
 
-## Por que Vela?
+## O que é o Vela
 
-<table>
-<tr>
-<td>
+O Vela é um framework autoral em Python para construção de aplicações desktop cuja interface é escrita com tecnologias web. O frontend roda dentro de uma WebView e se comunica com o runtime Python por HTTP local e pela Bridge do `pywebview`.
 
-### ✦ Sem Electron
-Nenhum Chromium empacotado. A janela usa o WebView **nativo** do SO — leve, rápido, sem overhead.
+O framework não tenta transformar uma página web em um executável por simples empacotamento. Ele fornece uma estrutura de aplicação com configuração, registro de apps, routing, templates, API, static pipeline, lifecycle, hot reload, serviços de desktop e ferramentas de build.
 
-</td>
-<td>
+O princípio arquitetural atual é:
 
-### ✦ Stack familiar
-Python no backend, HTML/CSS/JS no frontend. Se você sabe fazer um site, sabe fazer um app Vela.
+> **Vela Runtime é obrigatório; Vela UI Shell é opcional.**
 
-</td>
-<td>
+Isso permite tanto aplicações que usam sidebar/topbar e navegação fornecidas pelo Vela quanto interfaces com shell totalmente próprio.
 
-### ✦ Arquitetura limpa
-Separação clara entre rotas, views e serviços. Estrutura opinionada para projetos de qualquer tamanho.
+### Por que usar
 
-</td>
-</tr>
-</table>
+| Área | O que o Vela fornece |
+|---|---|
+| Desktop | Janela via `pywebview`, com backend selecionável por plataforma |
+| Frontend | HTML, CSS, JavaScript, Canvas/WebGL e integração com assets locais |
+| Backend | Python, services, repositories, parsers e integrações externas |
+| Navegação | Router visual, rotas nomeadas e lifecycle de página |
+| API | Bottle/Waitress, OpenAPI 3.0.3 e documentação local offline |
+| Templates | Engine própria com escaping por padrão e cache |
+| Estado | Módulos persistentes separados de módulos recarregáveis |
+| Dados | SQLite local com migrations versionadas por SHA-256 |
+| Concorrência | Jobs de I/O e CPU com pools dedicados |
+| Desktop services | Clipboard, notificações e consulta opt-in de updates |
+| Build | PyInstaller, doctor, wizard, instalador e relatório de build |
+| Distribuição | ZIP versionado, checksum SHA-256 e workflow Windows/Linux |
 
 ---
 
-## Instalação rápida
+## Principais recursos
 
-> [!NOTE]
-> Você precisará do **pipx** instalado. Se não tiver: `pip install pipx && pipx ensurepath`
+### Runtime e arquitetura
+
+- `VelaApp` como composition root do runtime.
+- `AppRegistry` e `AppConfig` para registro explícito de aplicações.
+- Compatibilidade com `app.register_app("apps.meu_app")`.
+- Router visual com lookup médio O(1) por path/nome.
+- `ApiRouter` indexado por método + path.
+- Lifecycle explícito: `created → configured → starting → running → stopping → stopped`.
+- `app.stop()` idempotente e shutdown ordenado de recursos.
+
+### Interface e WebView
+
+- Shell opcional com sidebar/topbar.
+- Conteúdo isolado em `#vela-app-root`.
+- Sem resets globais que quebrem `canvas`, `contenteditable`, seleção de texto ou PDF text layer.
+- Navegação com generation ID para impedir resposta antiga de sobrescrever uma navegação nova.
+- `AbortController` por página.
+- Hooks `beforeMount`, `mounted`, `beforeUnmount` e `unmounted`.
+- `Vela.capabilities()` com probes reais de PointerEvent, Canvas, WebGL/WebGL2 e localStorage.
+- `Vela.platform.clipboard.writeText()` com Bridge nativa e fallback DOM.
+
+### API e dados
+
+- Waitress multithread como servidor padrão da API local.
+- Bottle disponível como backend alternativo.
+- OpenAPI 3.0.3 gerado localmente.
+- Pydantic 2 opcional para validação/schema.
+- Body limit configurável.
+- Bind remoto somente quando explicitamente habilitado.
+- SQLite com migrations imutáveis e rastreadas por SHA-256.
+
+### Build e DX
+
+- `doctor` para diagnosticar Python, venv, instalação do Vela, GUI e ferramentas.
+- `self-test` para smoke test do runtime.
+- `assets verify` para validar assets offline e manifest.
+- `buildapp` para gerar distribuição PyInstaller.
+- `dist/build-report.json` com informações do ambiente de build.
+- Wizard gráfico `init-process:installation` / `buildapp --wizard`.
+- `installapp` / `uninstallapp`.
+- `makeworkflow` para CI/build Windows e Linux.
+
+---
+
+## Arquitetura
+
+```text
+VelaApp
+ │
+ ├── ConfigLoader / VelaConfig
+ ├── AppRegistry ───── AppConfig
+ │                    ├── views / urls / api
+ │                    ├── static / templates / resources
+ │                    └── reloadable / persistent modules
+ │
+ ├── Router ───────── TemplateEngine
+ ├── ApiRouter ────── ApiServer ───── Bottle / Waitress
+ │                         │
+ │                         └── StaticResolver / AssetManifest
+ │
+ ├── LifecycleManager
+ ├── HotReloadManager
+ ├── EventBus / JobManager
+ ├── Bridge ───────── PlatformServices
+ │                         └── clipboard / desktop integration
+ │
+ └── DesktopWindow ── pywebview ───── WebView engine
+                                   │
+                                   ▼
+                              Vela UI Shell
+                                   │
+                             #vela-app-root
+                                   │
+                              Application DOM
+```
+
+A arquitetura completa, decisões de design, complexidade e limites estão em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+---
+
+## Instalação e primeiro projeto
+
+### 1. Instale o CLI global
+
+O `pipx` é a forma recomendada para disponibilizar o comando `vela` sem misturar dependências com seus projetos:
 
 ```bash
-# 1. Instalar o CLI globalmente
+python -m pip install pipx
+pipx ensurepath
 pipx install git+https://github.com/zxlawdx/Vela-framework.git
+```
 
-# 2. Criar um novo projeto
+### 2. Crie o projeto
+
+```bash
 vela startproject meu_app
 cd meu_app
+```
 
-# 3. Criar e ativar o ambiente virtual
-python3 -m venv venv --system-site-packages   # Linux/macOS
-source venv/bin/activate
+### 3. Crie um ambiente virtual
 
-# py -3.13 -m venv venv                       # Windows
-# venv\Scripts\activate.bat
+Windows:
 
-# 4. Instalar o framework no projeto
-pip install git+https://github.com/zxlawdx/Vela-framework.git
+```powershell
+py -3.13 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
 
-# 5. Coletar estáticos e rodar
+Linux/macOS:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+> [!NOTE]
+> Em Linux, um venv isolado é recomendado para builds com Qt6. Se você escolher GTK e depender do `python3-gi` fornecido pelo sistema, poderá precisar de um ambiente separado criado com `--system-site-packages`. Não altere `pyvenv.cfg` manualmente.
+
+### 4. Instale o framework no projeto
+
+Instalação básica:
+
+```bash
+python -m pip install "vela-framework @ git+https://github.com/zxlawdx/Vela-framework.git"
+```
+
+Linux com Qt6:
+
+```bash
+python -m pip install "vela-framework[qt6] @ git+https://github.com/zxlawdx/Vela-framework.git"
+```
+
+Ambiente de build com Qt6:
+
+```bash
+python -m pip install "vela-framework[qt6,build] @ git+https://github.com/zxlawdx/Vela-framework.git"
+```
+
+### 5. Prepare assets e execute
+
+```bash
 python manage.py collectstatic
 python manage.py runapp
 ```
 
-> [!WARNING]
-> No **Linux**, sempre crie o venv com `--system-site-packages`. Sem essa flag o GTK não funciona dentro do ambiente virtual.
-
 ---
 
-## Estrutura do projeto
+## Estrutura de projeto
 
-```
+```text
 meu_app/
-├── manage.py                   # CLI local do projeto
-├── launcher.py                 # Ponto de entrada para build Windows (Qt)
-│
+├── manage.py
 ├── config/
-│   ├── settings.py             # Título, tamanho da janela, layout, debug…
-│   └── wsgi.py                 # Apps instalados + boot do VelaApp
+│   ├── settings.py
+│   └── wsgi.py
 │
 ├── apps/
 │   └── meu_app/
 │       ├── __init__.py
-│       ├── urls.py             # Registra rotas visuais (path)
-│       ├── views/              # ← padrão moderno: views como pacote
+│       ├── api.py                 # opcional
+│       ├── views/
 │       │   ├── __init__.py
-│       │   └── meu_app.py      # render_template + register_routes
-│       ├── api.py              # Endpoints @api.get / @api.post
-│       ├── services/           # Lógica de negócio, SSH, I/O, etc.
-│       │   ├── __init__.py
-│       │   └── meu_service.py
-│       ├── repositories/       # Acesso a dados / fontes externas
-│       │   └── meu_repo.py
-│       ├── parsers/            # Parsing de output, protocolos, etc.
-│       │   └── meu_parser.py
-│       ├── templates/          # HTML do app
-│       └── static/             # JS, CSS e assets do app
+│       │   └── meu_app.py
+│       ├── templates/
+│       ├── static/
+│       ├── services/              # convenção recomendada
+│       ├── repositories/          # convenção recomendada
+│       └── parsers/               # convenção recomendada
 │
-├── staticfiles/                # Gerado pelo collectstatic
-├── data/                       # Dados persistidos localmente (JSON, etc.)
-└── logs/
+├── assets/                        # opcional; ícones/recursos de distribuição
+├── migrations/                    # opcional; migrations SQLite
+├── staticfiles/                   # gerado por collectstatic
+├── .vela-build/                   # workspace temporário de build
+└── dist/                          # artefatos distribuíveis
 ```
 
-### Responsabilidade de cada camada
-
-| Arquivo / pasta | Responsabilidade |
-|---|---|
-| `urls.py` | Registrar rotas visuais com `path()` |
-| `views/` | `render_template` + `register_routes` para o router do Vela |
-| `api.py` | Endpoints REST `@api.get` / `@api.post` — importado no `wsgi.py` |
-| `services/` | Lógica de negócio, I/O, SSH, integrações externas |
-| `repositories/` | Abstração de fontes de dados (OLTs, arquivos, APIs) |
-| `parsers/` | Parsing de outputs CLI, protocolos, formatos externos |
-| `templates/` | HTML (template engine próprio do Vela) |
-| `static/` | JS, CSS e assets do app |
-| `config/settings.py` | Configurações globais da janela e do projeto |
-| `launcher.py` | Entrada do executável Windows — força pywebview com Qt |
+`services/`, `repositories/` e `parsers/` são convenções arquiteturais úteis para manter regra de negócio, acesso a dados e parsing fora das views/API.
 
 ---
 
-## Padrões de desenvolvimento
+## Configuração
 
-### settings.py
+Exemplo de `config/settings.py`:
 
 ```python
-# config/settings.py
+APP_TITLE = "Meu App Vela"
+APP_VERSION = "0.2.0"
+APP_ICON = "assets/logo.png"
+APP_AUTHOR = "Meu nome"
+APP_DESCRIPTION = "Descrição do aplicativo"
+APP_FILE_EXTENSIONS = [".meuapp"]
 
-APP_TITLE    = "Meu App"
-ENTRY_ROUTE  = "/"
+ENTRY_ROUTE = "/home"
 
-WINDOW_WIDTH  = 1200
+WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 800
 
-# Controla sidebar, topbar e tema da shell
 LAYOUT = {
-    "sidebar": False,   # True para apps com múltiplas seções
-    "topbar":  False,
-    "theme":   "dark",  # ou "light"
+    "sidebar": True,
+    "topbar": True,
+    "theme": "light",
 }
 
-DEBUG       = False     # True = abre o DevTools do WebView
-STATIC_ROOT = "staticfiles"
-
-# Porta preferencial do servidor HTTP interno.
-# Se 8000 já estiver em uso, o Vela escolhe outra porta livre automaticamente.
 API = {
+    "enabled": True,
     "host": "127.0.0.1",
     "port": 8000,
     "auto_port": True,
+    "server": "waitress",
+    "workers": 4,
+    "docs_enabled": True,
+    "max_body_size": 2 * 1024 * 1024,
 }
+
+DEBUG = True
+STATIC_ROOT = "staticfiles"
 ```
 
+Com `auto_port=True`, a porta configurada é preferencial. Se estiver ocupada, o runtime pode selecionar outra porta livre e propagar a porta efetiva para API, assets e janela.
+
+Em builds distribuídos, o launcher gerado define `VELA_PRODUCTION=1`; o runtime ignora `DEBUG=True`, desabilita hot reload e evita DevTools acidental.
+
 ---
 
-> [!TIP]
-> A porta em `API["port"]` é **preferencial**. Com `auto_port=True`, se outra instância ou processo já estiver usando essa porta, o Vela pede ao sistema operacional uma porta TCP livre e atualiza automaticamente o servidor, o router de assets e a URL da janela. Use `auto_port=False` se quiser falhar imediatamente quando a porta configurada estiver ocupada.
+## Apps, rotas e views
 
----
+### Registro simples
 
-### wsgi.py
+`config/wsgi.py`:
 
 ```python
-# config/wsgi.py
 from vela.core.app import VelaApp
 
-# Importa os módulos de API para registrar os endpoints @api.*
-import apps.meu_app.api  # noqa: F401
-
 INSTALLED_APPS = [
-    "apps.login",
+    "apps.home",
     "apps.dashboard",
-    "apps.meu_app",
 ]
 
 
@@ -279,235 +329,118 @@ def run():
     app.run()
 ```
 
-> [!TIP]
-> No `wsgi.py`, importe explicitamente os módulos `api.py` de cada app que define endpoints `@api.*`. O Vela não descobre esses módulos automaticamente — o import é o que registra os endpoints no servidor Bottle interno.
+O registro de uma aplicação importa oficialmente seus componentes, incluindo o módulo de API quando existente. Não é necessário importar `apps.foo.api` manualmente apenas para disparar decorators.
 
----
-
-### views — padrão moderno
-
-O padrão atual usa `views/` como **pacote** e expõe a função `register_routes` para o router visual do Vela.
+### View
 
 ```python
-# apps/dashboard/views/dashboard.py
-from vela.template_engine.engine import render_template
-from apps.noc.context import olt_context
+from vela.template_engine import render_template
 
 
-def dashboard_view(params: dict) -> str:
+def home_view(params):
     return render_template(
-        "apps/dashboard/templates/index.html",
-        context=olt_context("Dashboard"),
+        "apps/home/templates/index.html",
+        {"titulo": "Home"},
         router=params["router"],
     )
 ```
 
+`apps/home/views/__init__.py`:
+
 ```python
-# apps/meu_app/views/__init__.py
-from vela.urls import path
-from apps.meu_app.views.meu_app import meu_app_view
-
-
-urlpatterns = [
-    path("/", meu_app_view),
-]
+from .home import home_view
 
 
 def register_routes(router):
-    """
-    O Vela procura esta função dentro de apps.<app>.views.
-    Sem ela, a navegação visual da janela retorna 404 mesmo com urls.py correto.
-    """
     router.add(
-        "/",
-        meu_app_view,
-        name="meu_app_home",
-        title="Meu App",
-        icon="🛠️",
-        layout="blank",        # "blank" remove sidebar/topbar nessa rota
+        "/home",
+        home_view,
+        name="home",
+        title="Home",
+        layout="blank",
         show_in_sidebar=False,
     )
 ```
 
-> [!IMPORTANT]
-> A função `register_routes(router)` é o que conecta sua view ao roteador visual do Vela. Sem ela, as rotas do `urls.py` vão para a API interna mas a navegação da janela não as encontra.
+### AppConfig explícito
+
+Aplicações stateful podem declarar o que é recarregável e o que deve persistir:
+
+```python
+from vela.apps import AppConfig
+
+
+class NetworkConfig(AppConfig):
+    def __init__(self):
+        super().__init__(
+            name="network",
+            module="apps.network",
+            reloadable_modules=("apps.network.views",),
+            persistent_modules=(
+                "apps.network.services",
+                "apps.network.providers",
+                "apps.network.sessions",
+            ),
+            hidden_imports=("some_optional_driver",),
+        )
+```
 
 ---
 
-### API com api.py separado
+## API local
 
-Para apps mais complexos, mantenha os endpoints em um `api.py` separado das views visuais:
+Endpoints ficam separados da navegação visual:
 
 ```python
-# apps/meu_app/api.py
 from vela.api import api
-from apps.meu_app.services.meu_service import MeuService
-
-service = MeuService()
 
 
-def _json(context: dict | None) -> dict:
-    """Extrai o JSON do context com segurança."""
-    if not context:
-        return {}
-    data = context.get("json") or {}
-    return data if isinstance(data, dict) else {}
+@api.get("/clientes")
+def listar_clientes():
+    return {"clientes": []}
 
 
-def _required(data: dict, *fields: str) -> str | None:
-    """Retorna o primeiro campo ausente, ou None se tudo OK."""
-    for field in fields:
-        if data.get(field) in (None, ""):
-            return field
-    return None
-
-
-def _safe_call(fn):
-    """Wrapper que captura exceções e retorna {"error": ...}."""
-    try:
-        return fn()
-    except ValueError as exc:
-        return {"error": str(exc)}
-    except Exception as exc:
-        return {"error": str(exc)}
-
-
-@api.get("/items/")
-def list_items(context=None):
-    return {"results": service.list()}
-
-
-@api.post("/items/create/")
-def create_item(context=None):
-    data = _json(context)
-    missing = _required(data, "name", "type")
-    if missing:
-        return {"error": f"Campo '{missing}' é obrigatório."}
-    return _safe_call(lambda: service.create(data))
-
-
-@api.post("/items/delete/")
-def delete_item(context=None):
-    data = _json(context)
-    missing = _required(data, "id")
-    if missing:
-        return {"error": f"Campo '{missing}' é obrigatório."}
-    return _safe_call(lambda: service.delete(data["id"]))
+@api.post("/clientes")
+def criar_cliente(data: dict):
+    return {"recebido": data}
 ```
+
+Com o prefixo padrão `/api`, esses endpoints ficam disponíveis em:
+
+```text
+GET  /api/clientes
+POST /api/clientes
+```
+
+Não duplique o prefixo no decorator. `@api.get("/api/clientes")` é rejeitado cedo quando o servidor já usa `/api`.
+
+Quando `docs_enabled=True`:
+
+- `/api/docs` — documentação/teste local offline;
+- `/api/openapi.json` — OpenAPI 3.0.3;
+- `/api/health` — health check e uptime.
+
+Pydantic 2 é opcional. Handlers tipados com um modelo podem usar `model_validate()` e ter schema refletido no OpenAPI.
+
+> [!WARNING]
+> O padrão é loopback (`127.0.0.1`). Bind fora de loopback exige configuração explícita e APIs remotas continuam responsáveis por autenticação. A documentação local não deve ser tratada como mecanismo de segurança.
+
+Mais detalhes: [docs/API.md](docs/API.md).
 
 ---
 
-### Services e Repository
+## Templates e segurança
 
-Para apps com acesso a dados ou integrações externas, o padrão é separar em camadas:
-
-```python
-# apps/meu_app/repositories/item_repository.py
-
-
-class ItemNotFoundError(ValueError):
-    pass
-
-
-class ItemRepository:
-    def list(self) -> list[dict]:
-        # lê de arquivo, banco, API externa, etc.
-        ...
-
-    def get(self, name: str) -> dict:
-        item = self._find(name)
-        if not item:
-            raise ItemNotFoundError(f"Item '{name}' não encontrado.")
-        return item
-
-    def exists(self, name: str) -> bool:
-        return bool(name and self._find(name))
-```
-
-```python
-# apps/meu_app/services/item_service.py
-from apps.meu_app.repositories.item_repository import ItemRepository
-
-
-class ItemService:
-    def __init__(self, repository: ItemRepository | None = None):
-        self.repository = repository or ItemRepository()
-
-    def list(self) -> list[dict]:
-        return self.repository.list()
-
-    def create(self, data: dict) -> dict:
-        # validações, transformações, persistência
-        ...
-```
-
----
-
-### launcher.py (Windows/Qt)
-
-O `launcher.py` é o **ponto de entrada do executável Windows**. Ele força o pywebview a usar Qt em vez do WebView2 nativo do Windows (que pode dar problemas de empacotamento com PyInstaller).
-
-```python
-# launcher.py
-"""
-Launcher desktop — força pywebview com Qt.
-Evita Chromium/WebView2 e WinForms no executável final.
-"""
-import os
-import sys
-from pathlib import Path
-
-# Força Qt antes de qualquer import do pywebview
-os.environ["PYWEBVIEW_GUI"] = "qt"
-
-# Importa explicitamente para o PyInstaller detectar e empacotar
-from PyQt5.QtWidgets import QApplication       # noqa: F401
-from PyQt5.QtWebEngineWidgets import QWebEngineView  # noqa: F401
-
-import webview
-import webview.platforms.qt  # noqa: F401
-
-webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False
-
-_original_start = webview.start
-
-
-def start_qt(*args, **kwargs):
-    kwargs["debug"] = False
-    kwargs.pop("gui", None)
-    return _original_start(*args, gui="qt", **kwargs)
-
-
-webview.start = start_qt
-
-BASE_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(BASE_DIR))
-
-from config.wsgi import run
-
-if __name__ == "__main__":
-    run()
-```
-
-> [!NOTE]
-> Em **desenvolvimento** (Linux/macOS), continue usando `python manage.py runapp`. O `launcher.py` só é necessário para o build Windows com PyInstaller.
-
----
-
-## Sistema de templates
-
-O Vela possui um template engine próprio com suporte a variáveis e loops.
-
-### Variáveis
+O template engine escapa valores por padrão:
 
 ```html
 <h1>{{ titulo }}</h1>
-<p>Conectado como {{ usuario.nome }}</p>
+<p>{{ usuario.nome }}</p>
 ```
 
-Valores interpolados por `{{ ... }}` são **escapados por padrão**, inclusive dentro de loops. Dados vindos de usuário não viram HTML/JavaScript executável apenas por serem colocados no contexto.
+O escaping também se aplica dentro de loops.
 
-Para HTML intencionalmente confiável, use o bypass explícito `mark_safe()`:
+HTML intencionalmente confiável precisa ser marcado explicitamente:
 
 ```python
 from vela.template_engine import mark_safe
@@ -517,413 +450,404 @@ context = {
 }
 ```
 
-> [!WARNING]
-> `mark_safe()` define uma fronteira de confiança: não passe dados de usuário, respostas externas ou conteúdo não validado. Veja [Security Model](docs/SECURITY_MODEL.md) e [Architecture](docs/ARCHITECTURE.md).
+> [!CAUTION]
+> `mark_safe()` não sanitiza conteúdo. Não passe dados de usuário, rede, banco ou dispositivo sem sanitização adequada.
 
-### Loops
-
-```html
-<ul>
-  {{ for("items") }}
-  <li data-path="{{ item.path }}" data-type="{{ item.type }}">
-      {{ item.icon }} {{ item.name }}
-  </li>
-  {{ endfor }}
-</ul>
-```
-
-### Renderização server-side
-
-```python
-from vela.template_engine.engine import render_template
-
-
-def minha_view(params: dict) -> str:
-    return render_template(
-        "apps/meu_app/templates/index.html",
-        context={"titulo": "Meu App", "items": []},
-        router=params["router"],
-    )
-```
-
-### Estáticos nos templates
+### Assets em templates
 
 ```html
 <link rel="stylesheet" href="{{ static('meu_app/css/app.css') }}">
 <script src="{{ static('meu_app/js/app.js') }}"></script>
 ```
 
-> [!TIP]
-> Sempre rode `python manage.py collectstatic` após adicionar ou modificar arquivos em `static/`. Os arquivos são copiados para `staticfiles/` e servidos em `/__vela__/static/`.
+Não concatene manualmente `/static/` ou `/__vela__/static/`. O `StaticResolver` centraliza URL/path e bloqueia traversal, paths absolutos e symlink escape.
+
+Leia [docs/SECURITY_MODEL.md](docs/SECURITY_MODEL.md).
 
 ---
 
-## Fluxo completo
+## Assets e collectstatic
 
-```
-JavaScript (fetch)
-        │
-        ▼
-http://127.0.0.1:8000/api/…          ← servidor Bottle interno
-        │
-        ▼
-api.py (@api.get / @api.post)         ← endpoint registrado via import no wsgi.py
-        │
-        ▼
-services/                             ← lógica de negócio
-        │
-        ▼
-repositories/ / parsers/              ← acesso a dados e parsing
-        │
-        ▼
-JSON de retorno                       ← Vela serializa automaticamente
-        │
-        ▼
-Frontend (JS atualiza o DOM)
+O Vela separa source, runtime, workspace e distribuição:
+
+```text
+apps/<app>/static/   source do app
+staticfiles/         assets coletados usados pelo runtime
+.vela-build/         staging temporário de build
+dist/                artefato final
 ```
 
-A comunicação Python ↔ JS também está disponível via `window.pywebview.api`:
+`collectstatic` é o entrypoint único para preparar assets:
+
+```bash
+python manage.py collectstatic
+```
+
+Um projeto pode declarar pipeline Node/Python em `config/settings.py`:
+
+```python
+ASSETS = {
+    "node": {
+        "install": "ci",
+        "scripts": ["build:vendor"],
+    },
+    "hooks": ["tools.build_css:main"],
+    "tailwind": False,
+}
+```
+
+A execução pode validar `node_modules`, solicitar consentimento para `npm ci`/`npm install`, executar scripts declarados, hooks Python, Tailwind quando habilitado e finalmente coletar os arquivos.
+
+O Vela **não instala Node.js/npm no sistema** e não usa `apt`, `choco`, `winget` ou `sudo` para isso.
+
+CI não interativa:
+
+```bash
+python manage.py collectstatic --yes
+```
+
+Somente diagnóstico, sem instalar dependências locais:
+
+```bash
+python manage.py collectstatic --no-install
+```
+
+A coleta gera `staticfiles/manifest.json` com SHA-256.
+
+Valide o pacote de assets com:
+
+```bash
+python manage.py assets verify
+# ou globalmente
+vela assets verify
+```
+
+Mais detalhes: [docs/ASSETS_AND_BUILD.md](docs/ASSETS_AND_BUILD.md).
+
+---
+
+## Runtime: jobs, eventos, banco e desktop
+
+### Jobs
+
+```python
+from vela.jobs import JobManager
+
+jobs = JobManager(io_workers=4, cpu_workers=2)
+future = jobs.submit(minha_funcao, dados, mode="io")
+```
+
+`mode="cpu"` usa `ProcessPoolExecutor`. Callbacks não acontecem automaticamente na thread da interface.
+
+### Eventos Python → JavaScript
+
+Python:
+
+```python
+self.emit("progresso", {"etapa": 2, "total": 5})
+```
+
+JavaScript:
 
 ```javascript
-const result = await window.pywebview.api.ping()
+window.addEventListener("vela:event", (event) => {
+  if (event.detail.name === "progresso") {
+    console.log(event.detail.payload)
+  }
+})
 ```
+
+### SQLite e migrations
+
+```python
+from vela.database import SQLiteStore
+
+store = SQLiteStore("meu-app")
+store.migrate("migrations")
+
+with store.connect() as db:
+    db.execute("INSERT INTO exemplo(valor) VALUES(?)", ("valor",))
+    db.commit()
+```
+
+CLI:
+
+```bash
+python manage.py dbmigrate --dir migrations
+```
+
+### Notificações e updates
+
+```python
+from vela.desktop import notify, check_for_updates
+
+notify("Meu App", "Operação concluída")
+info = check_for_updates("owner/repo", "0.2.0")
+```
+
+A consulta de updates é opt-in, usa GitHub Releases e não baixa nem instala atualizações silenciosamente.
+
+Mais detalhes: [docs/RUNTIME.md](docs/RUNTIME.md).
 
 ---
 
-## Build para Windows
+## Hot reload e lifecycle
 
-O Vela usa **PyInstaller + PyQt5** para empacotar a aplicação num executável Windows sem dependências externas. O processo completo está automatizado num script `.bat`.
+Hot reload é ferramenta de desenvolvimento, não lifecycle de serviços.
+
+O Vela observa somente módulos classificados. Views podem ser recarregáveis enquanto conexões, sessions, providers e services permanecem vivos:
+
+```python
+persistent_modules=(
+    "apps.access.services",
+    "apps.access.providers",
+    "apps.access.sessions",
+)
+```
+
+Isso evita recriar conexão SSH, sessão HTTP autenticada ou provider de hardware a cada navegação.
+
+Em produção, `VELA_PRODUCTION=1` desabilita hot reload.
+
+Leia [docs/HOT_RELOAD.md](docs/HOT_RELOAD.md).
+
+---
+
+## Build e distribuição
+
+O fluxo atual é feito pelo próprio CLI do Vela. **Não é necessário manter um `build.bat` artesanal nem um `launcher.py` manual.** O `buildapp` gera seu próprio entrypoint de produção e usa PyInstaller.
+
+### Diagnóstico
+
+```bash
+python manage.py doctor --gui qt6
+```
+
+O doctor verifica projeto, interpretador Python, venv, instalação do Vela, backend GUI, Node/npm/npx quando relevantes e dependências necessárias ao build.
+
+Correções que alteram o ambiente/sistema só acontecem com opção explícita:
+
+```bash
+python manage.py doctor --gui qt6 --fix
+```
+
+### Planejar e compilar
+
+```bash
+python manage.py buildapp --dry-run
+python manage.py buildapp --gui qt6 --installer
+```
+
+Opções úteis:
+
+```text
+--gui auto|qt6|qt5|gtk|native
+--icon <arquivo>
+--installer
+--output <diretório>
+--dry-run
+--tailwind
+--plugins
+--wizard
+```
+
+O build gera, conforme plataforma/opções:
+
+```text
+dist/
+├── Meu-App/                    # bundle PyInstaller onedir
+├── Meu-App-<versão>-<SO>.zip  # distribuição versionada
+├── Meu-App-<...>.zip.sha256    # checksum
+└── build-report.json           # ambiente, backend, apps, imports e warnings
+```
+
+Com `--installer`, o bundle recebe script de instalação do sistema (`Instalar.sh` ou `Instalar.cmd`). Isso **não** significa gerar MSI/EXE Inno Setup, DEB ou RPM.
+
+O build também valida o backend escolhido e executa smoke/self-test do binário congelado antes da publicação do pacote quando aplicável.
+
+### Wizard gráfico
+
+```bash
+python manage.py init-process:installation
+```
+
+O alias histórico continua disponível:
+
+```bash
+python manage.py init-process:instalation
+```
+
+Também é possível usar:
+
+```bash
+python manage.py buildapp --wizard
+```
+
+O wizard conduz seleção de backend, ícone, diagnóstico, build e instalação com confirmações separadas.
+
+### Instalar
+
+Instalação por usuário:
+
+```bash
+python manage.py installapp
+```
+
+Instalação de sistema:
+
+```bash
+python manage.py installapp --scope system
+```
+
+Remoção:
+
+```bash
+python manage.py uninstallapp --slug Meu-App --yes
+```
+
+### Workflow de release
+
+```bash
+python manage.py makeworkflow
+```
+
+O workflow gerado cria jobs nativos Windows/Linux e pode publicar artefatos para tags `v*`.
 
 > [!IMPORTANT]
-> O build **deve rodar no próprio Windows**. Cross-compilation (gerar `.exe` a partir do Linux) não é suportada pelo PyInstaller de forma confiável.
+> O PyInstaller compila para o sistema operacional em que está sendo executado. Use runners nativos para gerar artefatos Windows e Linux. O suporte macOS ainda é experimental nesta versão.
 
-### Pré-requisitos
-
-- Python 3.10+ instalado (de preferência 3.13) — disponível no [python.org](https://www.python.org/downloads/windows/)
-- Git instalado — disponível em [git-scm.com](https://git-scm.com/download/win)
-- PowerShell habilitado (padrão no Windows 10/11)
-
-### requirements.txt para build Windows
-
-```
-git+https://github.com/zxlawdx/Vela-framework.git
-pyinstaller==6.11.1
-pywebview
-PyQt5
-PyQtWebEngine
-qtpy
-# suas dependências de projeto abaixo:
-# paramiko>=3.4,<4
-# keyboard==0.13.5
-# pyperclip==1.9.0
-```
-
-### build.bat
-
-Crie este arquivo na raiz do projeto:
-
-```bat
-@echo off
-setlocal
-cd /d "%~dp0"
-
-set PYTHONNOUSERSITE=1
-
-echo.
-echo Limpando builds anteriores...
-if exist build   rmdir /s /q build
-if exist dist    rmdir /s /q dist
-if exist package rmdir /s /q package
-if exist MeuApp-Windows.zip del MeuApp-Windows.zip
-
-echo.
-echo Preparando ambiente virtual...
-if not exist venv (
-    py -3.13 -m venv venv
-)
-call venv\Scripts\activate.bat
-
-echo.
-echo Instalando dependencias...
-python -m pip install --upgrade pip setuptools wheel
-python -m pip install --no-user -r requirements.txt
-python -m pip install --no-user --force-reinstall pyinstaller pywebview PyQt5 PyQtWebEngine qtpy
-
-echo.
-echo Testando Qt...
-python -c "import qtpy; from PyQt5.QtWidgets import QApplication; from PyQt5.QtWebEngineWidgets import QWebEngineView; print('Qt OK')"
-if errorlevel 1 (
-    echo ERRO: Qt nao funciona no venv. Verifique a instalacao.
-    pause & exit /b 1
-)
-
-echo.
-echo Coletando estaticos...
-python manage.py collectstatic --noinput
-
-echo.
-echo Gerando executavel com PyInstaller...
-python -m PyInstaller --noconfirm --clean --onedir --windowed ^
-  --name MeuApp ^
-  --add-data "apps;apps" ^
-  --add-data "config;config" ^
-  --add-data "staticfiles;staticfiles" ^
-  --collect-all vela ^
-  --collect-submodules vela ^
-  --collect-all PyQt5 ^
-  --collect-all PyQtWebEngine ^
-  --collect-all webview ^
-  --collect-all qtpy ^
-  --hidden-import=vela ^
-  --hidden-import=vela.core ^
-  --hidden-import=vela.core.app ^
-  --hidden-import=vela.template_engine ^
-  --hidden-import=vela.template_engine.engine ^
-  --hidden-import=webview ^
-  --hidden-import=webview.platforms.qt ^
-  --hidden-import=qtpy ^
-  --hidden-import=qtpy.QtCore ^
-  --hidden-import=qtpy.QtGui ^
-  --hidden-import=qtpy.QtWidgets ^
-  --hidden-import=PyQt5 ^
-  --hidden-import=PyQt5.QtCore ^
-  --hidden-import=PyQt5.QtGui ^
-  --hidden-import=PyQt5.QtWidgets ^
-  --hidden-import=PyQt5.QtWebEngineWidgets ^
-  --hidden-import=PyQt5.QtWebEngineCore ^
-  --hidden-import=PyQt5.QtWebChannel ^
-  --exclude-module=webview.platforms.winforms ^
-  --exclude-module=clr ^
-  --exclude-module=pythonnet ^
-  launcher.py
-
-if errorlevel 1 (
-    echo ERRO: PyInstaller falhou.
-    pause & exit /b 1
-)
-
-echo.
-echo Copiando arquivos do projeto para a dist...
-robocopy apps         dist\MeuApp\apps         /E /XD __pycache__
-robocopy config       dist\MeuApp\config       /E /XD __pycache__
-robocopy staticfiles  dist\MeuApp\staticfiles  /E /XD __pycache__
-:: Se tiver pasta de dados persistidos:
-:: robocopy data dist\MeuApp\data /E /XD __pycache__
-
-echo.
-echo Preparando pacote final...
-if exist package rmdir /s /q package
-mkdir package
-robocopy dist\MeuApp package\MeuApp /E /XD __pycache__
-
-echo.
-echo Gerando ZIP...
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "Start-Sleep 3; Compress-Archive -Path '.\package\MeuApp' -DestinationPath '.\MeuApp-Windows.zip' -Force"
-
-if not exist MeuApp-Windows.zip (
-    echo ERRO: Nao foi possivel gerar o ZIP.
-    echo Feche o MeuApp.exe e qualquer Explorer apontando para dist/ ou package/.
-    pause & exit /b 1
-)
-
-echo.
-echo Build finalizado: MeuApp-Windows.zip
-pause
-```
-
-### Como rodar o build
-
-```bat
-REM No Windows, com o PowerShell ou CMD:
-build.bat
-```
-
-O script:
-1. Cria um venv limpo com Python 3.13
-2. Instala todas as dependências (incluindo PyQt5 e PyInstaller)
-3. Coleta os estáticos
-4. Gera o executável com PyInstaller (`--onedir --windowed`)
-5. Copia os arquivos do projeto para dentro da `dist/`
-6. Empacota tudo em `MeuApp-Windows.zip` pronto para distribuição
-
-### Resultado
-
-```
-dist/
-└── MeuApp/
-    ├── MeuApp.exe          ← executável principal
-    ├── _internal/          ← DLLs, Python runtime, Qt, etc.
-    ├── apps/               ← código dos apps (copiado pelo robocopy)
-    ├── config/             ← settings e wsgi
-    └── staticfiles/        ← HTML, CSS, JS coletados
-```
-
-> [!WARNING]
-> **Não feche o Explorer apontando para `dist/` ou `package/`** durante o build — o PowerShell não consegue compactar pastas abertas no Explorer e o ZIP vai falhar. Se acontecer, feche o Explorer e rode `build.bat` de novo.
-
-### Troubleshooting de build
-
-<details>
-<summary><strong>Qt/PyQtWebEngine não instala no venv</strong></summary>
-
-```bat
-python -m pip install --force-reinstall PyQt5 PyQtWebEngine qtpy
-```
-
-Se persistir, certifique-se de que o Python foi instalado **para todos os usuários** (não só para o usuário atual) e que o `pip` é o do venv, não o global.
-</details>
-
-<details>
-<summary><strong>App abre e fecha imediatamente (sem janela)</strong></summary>
-
-Rode via CMD para ver o erro:
-
-```bat
-cd dist\MeuApp
-MeuApp.exe
-```
-
-O console vai mostrar o traceback. Geralmente é um `ModuleNotFoundError` de um `--hidden-import` faltando.
-</details>
-
-<details>
-<summary><strong>Estáticos não carregam no executável</strong></summary>
-
-Verifique se o `robocopy staticfiles dist\MeuApp\staticfiles` rodou sem erro (código de saída ≥ 8 = falha). Rode `python manage.py collectstatic` manualmente antes do build e confirme que `staticfiles/` está populado.
-</details>
-
-<details>
-<summary><strong>Janela abre em branco / sem conteúdo</strong></summary>
-
-Confirme que o `ENTRY_ROUTE` em `settings.py` bate com uma rota registrada via `register_routes`. Rode com `DEBUG = True` temporariamente para inspecionar no DevTools.
-</details>
+Leia [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md).
 
 ---
 
-## Comandos do CLI
+## CLI
 
-| Comando | Descrição |
+| Comando | Função |
 |---|---|
-| `vela startproject <nome>` | Cria um novo projeto |
-| `python manage.py runapp` | Inicia a aplicação |
-| `python manage.py startapp <nome>` | Cria um novo app dentro do projeto |
-| `python manage.py collectstatic` | Copia estáticos de cada app para `staticfiles/` |
-| `python manage.py routes` | Lista todas as rotas registradas |
-| `python manage.py shell` | Abre um shell Python com o contexto do projeto |
-| `python manage.py logs` | Exibe os logs do projeto |
+| `vela startproject <nome>` | Cria um projeto Vela |
+| `python manage.py runapp` | Inicia a aplicação desktop |
+| `python manage.py startapp <nome>` | Cria um app em `apps/` |
+| `python manage.py collectstatic` | Prepara e coleta assets |
+| `python manage.py assets verify` | Valida shell, manifest e assets offline |
+| `python manage.py self-test` | Executa smoke test do runtime |
+| `python manage.py routes` | Lista rotas visuais |
+| `python manage.py shell` | Abre shell Python do projeto |
+| `python manage.py logs [N]` | Exibe linhas do log mais recente |
+| `python manage.py version` | Exibe a versão instalada |
+| `python manage.py doctor` | Diagnostica ambiente e backend |
+| `python manage.py buildapp` | Gera distribuição e `build-report.json` |
+| `python manage.py installapp` | Instala um bundle local |
+| `python manage.py uninstallapp` | Remove uma instalação |
+| `python manage.py makeworkflow` | Gera workflow de build/release |
+| `python manage.py dbmigrate` | Aplica migrations SQLite |
+| `python manage.py checkupdates --repo owner/repo` | Consulta release disponível |
+| `python manage.py init-process:installation` | Abre wizard de build/instalação |
 
 ---
 
 ## Compatibilidade
 
-| Sistema operacional | Backend de renderização | Build |
-|---|---|---|
-| 🐧 Linux | GTK + WebKit2 | `python manage.py runapp` |
-| 🪟 Windows (dev) | WebView2 (Edge) | `python launcher.py` |
-| 🪟 Windows (dist) | Qt + QtWebEngine | `build.bat` → `.exe` |
-| 🍎 macOS | WKWebView | `python manage.py runapp` |
+O backend real importa. O Vela expõe capabilities em runtime em vez de assumir que todo engine suporta o mesmo conjunto de APIs.
 
-### Dependências Linux (Ubuntu/Debian)
+| Ambiente | Situação atual |
+|---|---|
+| Linux + Qt6 WebEngine | Tier 1 para smoke de build/runtime na CI |
+| Windows core/static/build tooling | Tier 1 na matriz atual |
+| Windows WebView interativo | Tier 2; contrato testado, sem sessão gráfica completa na CI |
+| Linux GTK/WebKit | Experimental |
+| macOS | Experimental nesta versão |
 
-```bash
-sudo apt install -y \
-  python3-gi \
-  python3-gi-cairo \
-  gir1.2-gtk-3.0 \
-  gir1.2-webkit2-4.1 \
-  libgirepository-2.0-dev \
-  libcairo2-dev \
-  pkg-config \
-  python3-dev
+Frontend:
+
+```javascript
+const caps = await Vela.capabilities()
+
+if (caps.webgl2) {
+  // habilitar recurso específico
+}
 ```
+
+O framework não promete compatibilidade universal entre bibliotecas JavaScript e engines antigos. Empacote seu frontend de acordo com o WebView que pretende suportar.
+
+Mais detalhes: [docs/WEBVIEW_COMPATIBILITY.md](docs/WEBVIEW_COMPATIBILITY.md).
 
 ---
 
-## FAQ
+## Documentação
 
-<details>
-<summary><strong>No module named 'gi'</strong></summary>
-
-```bash
-sudo apt install python3-gi
-```
-</details>
-
-<details>
-<summary><strong>pywebview não abre a janela</strong></summary>
-
-```bash
-sudo apt install gir1.2-webkit2-4.1
-```
-</details>
-
-<details>
-<summary><strong>Comando `vela` não encontrado após pipx install</strong></summary>
-
-```bash
-pipx ensurepath
-# Reabra o terminal
-```
-</details>
-
-<details>
-<summary><strong>No module named 'vela'</strong></summary>
-
-```bash
-pip install -e .
-```
-</details>
-
-<details>
-<summary><strong>Estáticos com caminho <code>file://</code></strong></summary>
-
-Isso indica que o `collectstatic` não foi executado, ou que há uma instância duplicada de `VelaApp`. Verifique:
-
-1. `python manage.py collectstatic` foi rodado?
-2. `VelaApp` é instanciado **apenas uma vez** em `wsgi.py`?
-</details>
-
-<details>
-<summary><strong>register_routes não é chamado / rota retorna 404</strong></summary>
-
-Confirme que `views/__init__.py` (ou `views.py`) expõe a função `register_routes(router)`. O Vela procura por ela automaticamente ao registrar o app — sem ela, as rotas visuais não são conectadas mesmo com `urls.py` correto.
-</details>
+| Documento | Conteúdo |
+|---|---|
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Arquitetura atual e contratos do runtime |
+| [ARCHITECTURE_FORENSIC_AUDIT.md](docs/ARCHITECTURE_FORENSIC_AUDIT.md) | Auditoria arquitetural e histórico técnico |
+| [API.md](docs/API.md) | API local, OpenAPI e Waitress |
+| [ASSETS_AND_BUILD.md](docs/ASSETS_AND_BUILD.md) | Pipeline de assets, manifest e build report |
+| [DISTRIBUTION.md](docs/DISTRIBUTION.md) | Build, wizard, instalação e distribuição |
+| [HOT_RELOAD.md](docs/HOT_RELOAD.md) | Módulos reloadable/persistent |
+| [PERFORMANCE.md](docs/PERFORMANCE.md) | Decisões e medições de desempenho |
+| [REAL_WORLD_REGRESSIONS.md](docs/REAL_WORLD_REGRESSIONS.md) | Regressões encontradas em apps consumidores |
+| [RUNTIME.md](docs/RUNTIME.md) | Jobs, eventos, SQLite, notificações e plugins |
+| [SECURITY_MODEL.md](docs/SECURITY_MODEL.md) | Trust boundaries e hardening |
+| [WEBVIEW_COMPATIBILITY.md](docs/WEBVIEW_COMPATIBILITY.md) | Backends e capability probes |
+| [CHANGELOG.md](CHANGELOG.md) | Histórico de mudanças e breaking changes |
 
 ---
 
 ## Contribuindo
 
-Contribuições são muito bem-vindas!
+Contribuições são bem-vindas.
 
-1. Faça um fork do repositório
-2. Crie uma branch: `git checkout -b feat/minha-feature`
-3. Commit suas mudanças: `git commit -m 'feat: adiciona minha feature'`
-4. Push: `git push origin feat/minha-feature`
-5. Abra um Pull Request
+```bash
+git clone https://github.com/zxlawdx/Vela-framework.git
+cd Vela-framework
+python -m venv .venv
+```
+
+Instale dependências de desenvolvimento:
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+Execute a suíte antes de enviar alterações:
+
+```bash
+pytest
+ruff check .
+```
+
+Fluxo sugerido:
+
+1. Crie uma branch focada em uma mudança.
+2. Adicione testes para correções ou novos contratos.
+3. Atualize documentação quando comportamento público mudar.
+4. Evite quebrar compatibilidade sem registrar a decisão no changelog.
+5. Abra um Pull Request descrevendo comportamento anterior, mudança e validação.
+
+---
+
+## Licença e citação
+
+Vela Framework é distribuído sob a **Mozilla Public License 2.0 (MPL-2.0)**.
+
+Consulte:
+
+- [LICENSE](LICENSE)
+- [NOTICE.md](NOTICE.md)
+- [docs/LICENSE_AND_CITATION.md](docs/LICENSE_AND_CITATION.md)
+- [CITATION.cff](CITATION.cff)
+
+Criador e mantenedor: **Marinaldo da Costa Barroso Filho**.
+
+Para uso acadêmico, utilize o botão **Cite this repository** do GitHub ou os metadados de `CITATION.cff`.
+
+A MPL preserva avisos de autoria nos arquivos cobertos, mas não obriga aplicações criadas com Vela a exibir créditos na interface. Código copiado/modificado a partir de arquivos do framework pode possuir obrigações próprias de redistribuição; confira a documentação de licença antes de distribuir software proprietário.
 
 ---
 
 <div align="center">
 
-Feito com ☕ e Python
+**Vela Framework — desktop em Python com uma camada web, sem Electron.**
 
-[![GitHub](https://img.shields.io/badge/GitHub-zxlawdx-181717?style=flat-square&logo=github)](https://github.com/zxlawdx/Vela-framework)
+Feito com ☕, Python e muita iteração em aplicações reais.
 
 </div>
-
-
-## Licença e autoria
-
-Vela Framework está sob a **Mozilla Public License 2.0 (MPL-2.0)**.
-Consulte [LICENSE](LICENSE), [NOTICE.md](NOTICE.md) e a
-[documentação de licença e citação](docs/LICENSE_AND_CITATION.md).
-
-Criador do projeto: **Marinaldo da Costa Barroso Filho**.
-Para citações acadêmicas, utilize o botão **Cite this repository**,
-configurado em [CITATION.cff](CITATION.cff).
-
-A MPL exige a preservação dos avisos de autoria dos respectivos titulares,
-mas não obriga aplicativos criados com Vela a exibir créditos na interface.
-Código copiado dos templates do projeto pode ter obrigações próprias de
-redistribuição: veja o guia antes de distribuir aplicações proprietárias.
