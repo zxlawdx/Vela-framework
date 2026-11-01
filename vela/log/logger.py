@@ -4,11 +4,29 @@
 from __future__ import annotations
 
 import logging
+import sys
 from datetime import datetime
 from pathlib import Path
 
 LOG_DIR = Path.cwd() / "logs"
 LOG_FILE = LOG_DIR / f"vela_{datetime.now().strftime('%Y-%m-%d')}.log"
+
+
+class _SafeConsoleHandler(logging.StreamHandler):
+    """Keep console logging working even with legacy Windows encodings."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            message = self.format(record) + self.terminator
+            try:
+                self.stream.write(message)
+            except UnicodeEncodeError:
+                # ASCII escapes work on cp1252 and other limited console encodings.
+                safe_message = message.encode("ascii", errors="backslashreplace").decode("ascii")
+                self.stream.write(safe_message)
+            self.flush()
+        except Exception:
+            self.handleError(record)
 
 
 def _setup_logger(name: str) -> logging.Logger:
@@ -22,10 +40,12 @@ def _setup_logger(name: str) -> logging.Logger:
         "%(asctime)s  %(levelname)-8s  [%(name)s]  %(message)s",
         datefmt="%H:%M:%S",
     )
-    console = logging.StreamHandler()
-    console.setLevel(logging.DEBUG)
-    console.setFormatter(fmt)
-    logger.addHandler(console)
+    # --windowed PyInstaller executables may have no stderr stream.
+    if sys.stderr is not None:
+        console = _SafeConsoleHandler(sys.stderr)
+        console.setLevel(logging.DEBUG)
+        console.setFormatter(fmt)
+        logger.addHandler(console)
     try:
         file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
         file_handler.setLevel(logging.DEBUG)
