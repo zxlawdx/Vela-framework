@@ -98,7 +98,7 @@ def winforms_fullscreen(view):
             bounds = (actual.X, actual.Y, actual.Width, actual.Height)
             screen = (monitor.X, monitor.Y, monitor.Width, monitor.Height)
             return bool(
-                view.FormBorderStyle == FormBorderStyle.None
+                view.FormBorderStyle == getattr(FormBorderStyle, "None")
                 and view.WindowState == FormWindowState.Maximized
                 and _covers_screen(bounds, screen)
             )
