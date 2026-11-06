@@ -1,15 +1,19 @@
 # SPDX-License-Identifier: MPL-2.0
-"""Stateful and thread-safe pywebview window operations shared by Vela apps.
+"""Native fullscreen bridge with observable Qt/WinForms state.
 
-pywebview exposes toggle_fullscreen(), but not a portable fullscreen getter.
-The service tracks changes made through this API. External/native shortcut
-changes cannot be inferred and must not be reported as authoritative.
+pywebview's toggle_fullscreen() schedules a GUI change. Calling it successfully
+does not mean that Qt/WinForms has actually entered fullscreen yet; inspect
+the backend state before acknowledging a transition. Never use a cached intent
+value as evidence that Windows has hidden its window decorations.
 """
 
 from __future__ import annotations
 
 from threading import RLock
+from time import monotonic, sleep
 from typing import Any
+
+from vela.core.native_window_probe import native_fullscreen
 
 
 class NativeWindowService:
@@ -28,13 +32,23 @@ class NativeWindowService:
             self._window = None
             self._fullscreen = False
 
+    @staticmethod
+    def _native_fullscreen(window: Any) -> bool | None:
+        """Observe Qt/WinForms top-level window geometry on the GUI thread."""
+        return native_fullscreen(window)
+
     def get_state(self) -> dict[str, object]:
         with self._lock:
             window = self._window
+            native = self._native_fullscreen(window)
+            if native is not None:
+                self._fullscreen = native
             return {
                 "ok": window is not None,
                 "available": window is not None,
-                "fullscreen": self._fullscreen,
+                "fullscreen": self._fullscreen if native is None else native,
+                "native_fullscreen": native,
+                "verified": native is not None,
                 "managed": True,
                 "width": getattr(window, "width", None) if window else None,
                 "height": getattr(window, "height", None) if window else None,
@@ -44,21 +58,55 @@ class NativeWindowService:
         if type(enabled) is not bool:
             return {"ok": False, "error": "Fullscreen requer um valor booleano."}
         with self._lock:
-            if self._window is None:
+            window = self._window
+            if window is None:
                 return {"ok": False, "error": "Janela desktop não disponível."}
-            if self._fullscreen == enabled:
+            current = self._native_fullscreen(window)
+            if current is None and self._fullscreen == enabled:
+                # A previous unverified toggle cannot prove that the OS
+                # actually reached the requested state.
+                state = self.get_state()
+                state.update(
+                    ok=False, error="Estado fullscreen nativo indisponível para verificação."
+                )
+                return state
+            if current is not None and current == enabled:
+                self._fullscreen = enabled
                 return self.get_state()
-            toggle = getattr(self._window, "toggle_fullscreen", None)
+            toggle = getattr(window, "toggle_fullscreen", None)
             if not callable(toggle):
                 return {"ok": False, "error": "Este backend não suporta fullscreen."}
             try:
-                # pywebview marshals native calls into its active GUI backend.
                 toggle()
             except Exception:
                 return {"ok": False, "error": "Não foi possível alterar o modo de tela cheia."}
-            self._fullscreen = enabled
-            return self.get_state()
+
+            # pywebview/Qt uses an asynchronous GUI signal. Poll the native
+            # state (not the intent flag); do not retry by blindly toggling.
+            deadline = monotonic() + 1.2
+            observed = self._native_fullscreen(window)
+            while observed is not None and observed != enabled and monotonic() < deadline:
+                sleep(0.025)
+                observed = self._native_fullscreen(window)
+            if observed is None:
+                self._fullscreen = enabled
+                state = self.get_state()
+                state.update(
+                    ok=False,
+                    verified=False,
+                    error="Backend não informa o estado fullscreen real; alteração não confirmada.",
+                )
+                return state
+            self._fullscreen = observed
+            state = self.get_state()
+            if observed != enabled:
+                state.update(
+                    ok=False,
+                    error="A janela não atingiu o modo fullscreen solicitado.",
+                )
+            return state
 
     def toggle_fullscreen(self) -> dict[str, object]:
         with self._lock:
-            return self.set_fullscreen(not self._fullscreen)
+            current = self._native_fullscreen(self._window)
+            return self.set_fullscreen(not (self._fullscreen if current is None else current))
