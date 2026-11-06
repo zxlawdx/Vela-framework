@@ -85,7 +85,9 @@ class NativeWindowService:
                 # A previous unverified toggle cannot prove that the OS
                 # actually reached the requested state.
                 state = self.get_state()
-                state.update(ok=False, error="Estado fullscreen nativo indisponível para verificação.")
+                state.update(
+                    ok=False, error="Estado fullscreen nativo indisponível para verificação."
+                )
                 return state
             if current is not None and current == enabled:
                 self._fullscreen = enabled
