@@ -4,6 +4,7 @@
 Return None when unavailable. A pywebview is_fullscreen flag alone is NOT
 accepted as evidence that the operating-system window covers its display.
 """
+
 from __future__ import annotations
 
 from threading import Event
@@ -52,16 +53,11 @@ def qt_fullscreen(view):
                     return
                 actual = view.frameGeometry()
                 display = screen_obj.geometry()
-                bounds = (
-                    actual.x(), actual.y(), actual.width(), actual.height()
-                )
-                screen = (
-                    display.x(), display.y(), display.width(), display.height()
-                )
+                bounds = (actual.x(), actual.y(), actual.width(), actual.height())
+                screen = (display.x(), display.y(), display.width(), display.height())
                 full_state = bool(view.windowState() & Qt.WindowFullScreen)
                 self.result = bool(
-                    view.isFullScreen() and full_state
-                    and _covers_screen(bounds, screen)
+                    view.isFullScreen() and full_state and _covers_screen(bounds, screen)
                 )
             except (AttributeError, RuntimeError, TypeError):
                 self.result = None
