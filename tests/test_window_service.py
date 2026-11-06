@@ -8,6 +8,7 @@ from unittest import mock
 
 from vela.core.bridge import BaseBridge
 from vela.core.window_service import NativeWindowService
+from vela.core.native_window_probe import _covers_screen, native_fullscreen
 
 
 class FakeWindow:
@@ -30,6 +31,27 @@ class FakeWindow:
 
 
 class WindowServiceTests(unittest.TestCase):
+    def setUp(self):
+        # Unit fakes verify the idempotent service contract. Native UI geometry
+        # must be tested separately in actual Qt/WinForms GUI runners.
+        patcher=mock.patch.object(
+            NativeWindowService, "_native_fullscreen",
+            side_effect=lambda window: (
+                window.native.is_fullscreen if window and window.gui is not None else None
+            ),
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_real_geometry_comparison_rejects_false_positive(self):
+        self.assertTrue(_covers_screen((0, 0, 1920, 1080), (0, 0, 1920, 1080)))
+        self.assertFalse(_covers_screen((0, 0, 1920, 1040), (0, 0, 1920, 1080)))
+        self.assertFalse(_covers_screen((0, 40, 1920, 1080), (0, 0, 1920, 1080)))
+        self.assertTrue(_covers_screen((-1920, 0, 1920, 1080), (-1920, 0, 1920, 1080)))
+
+    def test_boolean_only_fake_is_not_native_verification(self):
+        window=FakeWindow()
+        self.assertIsNone(native_fullscreen(window))
     def test_not_attached_or_invalid_boolean(self):
         service = NativeWindowService()
         self.assertFalse(service.get_state()["available"])
