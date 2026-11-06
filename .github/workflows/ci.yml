@@ -61,6 +61,30 @@ jobs:
           assert (root/'staticfiles'/'demo'/'app.js').is_file();
           assert (root/'staticfiles'/'manifest.json').is_file()"
 
+
+  native-qt-fullscreen-windows:
+    runs-on: windows-latest
+    env:
+      QT_API: pyqt5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install real Qt window backend
+        run: |
+          python -m pip install -e .
+          python -m pip install PyQt5>=5.15.11 qtpy>=2.4
+      - name: Verify real screen geometry and restoration
+        run: python tools/qa_native_fullscreen.py
+      - name: Upload native Qt fullscreen screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vela-windows-native-fullscreen
+          path: docs/images/qa-native-fullscreen/
+          if-no-files-found: warn
+
   lint:
     runs-on: ubuntu-latest
     steps:
