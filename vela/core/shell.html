@@ -68,6 +68,24 @@
       _pageController: null,
 
       platform: {
+        window: {
+          async _call(method, ...args) {
+            const api = window.pywebview?.api
+            if (!api || typeof api[method] !== 'function')
+              throw new Error('Gerenciamento nativo da janela indisponível.')
+            const result = await api[method](...args)
+            if (!result?.ok) throw new Error(result?.error || 'Operação de janela não concluída.')
+            return result
+          },
+          async enterFullscreen() { return this._call('window_set_fullscreen', true) },
+          async exitFullscreen() { return this._call('window_set_fullscreen', false) },
+          async setFullscreen(value) {
+            if (typeof value !== 'boolean') throw new TypeError('Fullscreen deve ser booleano.')
+            return this._call('window_set_fullscreen', value)
+          },
+          async toggleFullscreen() { return this._call('window_toggle_fullscreen') },
+          async getState() { return this._call('window_get_state') },
+        },
         clipboard: {
           async writeText(value) {
             const text = String(value ?? '')

@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from vela.core.window_service import NativeWindowService
 from vela.events import EventBus
 from vela.log.logger import VelaLogger
 from vela.platform import PlatformServices
@@ -27,6 +28,7 @@ class BaseBridge:
         self.platform = platform or PlatformServices.detect()
         self.config = config or {"title": "Vela App", "layout": {"sidebar": True, "topbar": True}}
         self._window = None
+        self._window_service = NativeWindowService()
 
     def get_config(self) -> dict:
         import vela
@@ -134,4 +136,26 @@ class BaseBridge:
 
     def _attach_window(self, window):
         self._window = window
+        self._window_service.attach(window)
         self.events.attach_window(window)
+
+    def _detach_window(self):
+        self._window_service.detach()
+        self._window = None
+        self.events.attach_window(None)
+
+    def window_get_state(self) -> dict[str, object]:
+        """Read Vela-managed window state. External OS toggles are not tracked."""
+        return self._window_service.get_state()
+
+    def window_set_fullscreen(self, enabled: bool) -> dict[str, object]:
+        result = self._window_service.set_fullscreen(enabled)
+        if result.get("ok"):
+            self.events.emit("window:state", result)
+        return result
+
+    def window_toggle_fullscreen(self) -> dict[str, object]:
+        result = self._window_service.toggle_fullscreen()
+        if result.get("ok"):
+            self.events.emit("window:state", result)
+        return result
