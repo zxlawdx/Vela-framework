@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Public fullscreen API regressions; no GUI assertion is mocked as native proof."""
+
 import unittest
 from unittest import mock
 
