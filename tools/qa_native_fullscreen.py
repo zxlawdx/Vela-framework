@@ -17,7 +17,7 @@ from pathlib import Path
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QApplication, QLabel, QMainWindow
 
-from vela.core.native_window_probe import qt_fullscreen
+from vela.core.native_window_probe import qt_client_bounds, qt_fullscreen
 
 
 def main() -> None:
@@ -61,6 +61,13 @@ def main() -> None:
             view.frameGeometry().y(),
             view.frameGeometry().width(),
             view.frameGeometry().height(),
+        ],
+        "client_bounds": qt_client_bounds(view),
+        "geometry": [
+            view.geometry().x(),
+            view.geometry().y(),
+            view.geometry().width(),
+            view.geometry().height(),
         ],
         "native_geometry_verified": qt_fullscreen(view),
     }
