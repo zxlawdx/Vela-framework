@@ -7,6 +7,7 @@ accepted as evidence that the operating-system window covers its display.
 
 from __future__ import annotations
 
+import os
 from threading import Event
 
 
@@ -23,6 +24,49 @@ def _covers_screen(bounds, screen, tolerance=5):
         and abs(height - sh) <= tolerance
     )
 
+
+
+def qt_client_bounds(view):
+    """Visible content bounds in monitor coordinates, not Qt frame shadows.
+
+    Windows adds an invisible resize border to frameGeometry even for a
+    fullscreen window. GetClientRect + ClientToScreen reads the actual native
+    HWND content extent. This still demands exact coverage of the display.
+    """
+    try:
+        if os.name == "nt":
+            import ctypes
+            from ctypes import wintypes
+
+            class Rect(ctypes.Structure):
+                _fields_ = [
+                    ("left", wintypes.LONG),
+                    ("top", wintypes.LONG),
+                    ("right", wintypes.LONG),
+                    ("bottom", wintypes.LONG),
+                ]
+
+            hwnd = int(view.winId())
+            rect = Rect()
+            point = wintypes.POINT(0, 0)
+            user32 = ctypes.windll.user32
+            if not user32.GetClientRect(hwnd, ctypes.byref(rect)):
+                return None
+            if not user32.ClientToScreen(hwnd, ctypes.byref(point)):
+                return None
+            return (
+                point.x,
+                point.y,
+                rect.right - rect.left,
+                rect.bottom - rect.top,
+            )
+        from qtpy.QtCore import QPoint
+
+        p = view.mapToGlobal(QPoint(0, 0))
+        size = view.size()
+        return p.x(), p.y(), size.width(), size.height()
+    except (AttributeError, OSError, RuntimeError, TypeError, ValueError):
+        return None
 
 def qt_fullscreen(view):
     """Probe a QMainWindow on its GUI thread, never a worker thread."""
@@ -51,13 +95,15 @@ def qt_fullscreen(view):
                 screen_obj = view.screen()
                 if screen_obj is None:
                     return
-                actual = view.frameGeometry()
                 display = screen_obj.geometry()
-                bounds = (actual.x(), actual.y(), actual.width(), actual.height())
+                bounds = qt_client_bounds(view)
                 screen = (display.x(), display.y(), display.width(), display.height())
                 full_state = bool(view.windowState() & Qt.WindowFullScreen)
                 self.result = bool(
-                    view.isFullScreen() and full_state and _covers_screen(bounds, screen)
+                    view.isFullScreen()
+                    and full_state
+                    and bounds is not None
+                    and _covers_screen(bounds, screen)
                 )
             except (AttributeError, RuntimeError, TypeError):
                 self.result = None
