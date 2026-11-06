@@ -26,7 +26,7 @@ def _covers_screen(bounds, screen, tolerance=5):
 def qt_fullscreen(view):
     """Probe a QMainWindow on its GUI thread, never a worker thread."""
     try:
-        from qtpy.QtCore import QObject, QThread, Qt, Signal, Slot
+        from qtpy.QtCore import QObject, Qt, QThread, Signal, Slot
         from qtpy.QtWidgets import QApplication
     except ImportError:
         return None
