@@ -25,7 +25,6 @@ def _covers_screen(bounds, screen, tolerance=5):
     )
 
 
-
 def qt_client_bounds(view):
     """Visible content bounds in monitor coordinates, not Qt frame shadows.
 
