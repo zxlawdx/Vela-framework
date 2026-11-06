@@ -17,9 +17,11 @@ class FakeWindow:
     def __init__(self):
         self.toggles = 0
         self.scripts = []
-        self.uid = 'fake-window'
+        self.uid = "fake-window"
         self.native = SimpleNamespace(is_fullscreen=False)
-        self.gui = SimpleNamespace(BrowserView=SimpleNamespace(instances={self.uid: self.native}))
+        self.gui = SimpleNamespace(
+            BrowserView=SimpleNamespace(instances={self.uid: self.native})
+        )
 
     def toggle_fullscreen(self):
         self.toggles += 1
@@ -59,13 +61,14 @@ class WindowServiceTests(unittest.TestCase):
         self.assertFalse(service.set_fullscreen(True)["ok"])
         self.assertFalse(service.get_state()["fullscreen"])
 
-
     def test_delayed_native_signal_must_be_observed_before_success(self):
         service = NativeWindowService()
         window = FakeWindow()
+
         def delayed():
             window.toggles += 1
-            Timer(0.06, lambda: setattr(window.native, 'is_fullscreen', True)).start()
+            Timer(0.06, lambda: setattr(window.native, "is_fullscreen", True)).start()
+
         window.toggle_fullscreen = delayed
         service.attach(window)
         state = service.set_fullscreen(True)
