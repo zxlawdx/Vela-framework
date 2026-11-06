@@ -35,7 +35,7 @@ def main() -> None:
     view.setGeometry(100, 100, 900, 600)
     view.showNormal()
     app.processEvents()
-    previous = view.normalGeometry()
+    previous = view.geometry()
     assert not view.isFullScreen(), "A janela deve iniciar em modo normal."
 
     view.showFullScreen()
@@ -94,7 +94,7 @@ def main() -> None:
             break
         time.sleep(0.025)
     assert qt_fullscreen(view) is False, "A janela permaneceu fullscreen."
-    restored = view.frameGeometry()
+    restored = view.geometry()
     assert (
         abs(restored.width() - previous.width()) <= 8
         and abs(restored.height() - previous.height()) <= 8
