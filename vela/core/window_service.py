@@ -5,6 +5,7 @@ pywebview exposes toggle_fullscreen(), but not a portable fullscreen getter.
 The service tracks changes made through this API. External/native shortcut
 changes cannot be inferred and must not be reported as authoritative.
 """
+
 from __future__ import annotations
 
 from threading import RLock
