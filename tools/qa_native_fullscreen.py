@@ -27,6 +27,8 @@ def main() -> None:
     if screen is None:
         raise RuntimeError("Nenhum monitor Qt disponível.")
     view = QMainWindow()
+    # Mirror pywebview 6.2's BrowserView, which shadows QWidget.screen().
+    view.screen = screen.geometry()
     view.setWindowTitle("Vela Native Fullscreen QA")
     content = QLabel("VELA QT FULLSCREEN — CAPTURA REAL")
     content.setAlignment(Qt.AlignCenter)
