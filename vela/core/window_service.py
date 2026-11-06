@@ -12,6 +12,7 @@ from __future__ import annotations
 from threading import RLock
 from time import monotonic, sleep
 from typing import Any
+
 from vela.core.native_window_probe import native_fullscreen
 
 
