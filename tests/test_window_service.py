@@ -2,9 +2,9 @@
 """Public fullscreen API regressions; no GUI assertion is mocked as native proof."""
 
 import unittest
-from unittest import mock
 from threading import Timer
 from types import SimpleNamespace
+from unittest import mock
 
 from vela.core.bridge import BaseBridge
 from vela.core.window_service import NativeWindowService
