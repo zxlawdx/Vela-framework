@@ -12,6 +12,7 @@ from __future__ import annotations
 from threading import RLock
 from time import monotonic, sleep
 from typing import Any
+from vela.core.native_window_probe import native_fullscreen
 
 
 class NativeWindowService:
@@ -32,29 +33,8 @@ class NativeWindowService:
 
     @staticmethod
     def _native_fullscreen(window: Any) -> bool | None:
-        """Read the platform window, not merely pywebview's intended state.
-
-        The Qt/WinForms backend changes its `is_fullscreen` flag on the
-        GUI thread once the native operation has executed. Attribute lookup
-        is read-only: this code never mutates GUI objects from a bridge worker.
-        For unknown backends report unverified instead of guessing success.
-        """
-        if window is None:
-            return None
-        try:
-            gui = getattr(window, "gui", None)
-            uid = getattr(window, "uid", None)
-            instances = getattr(getattr(gui, "BrowserView", None), "instances", None)
-            if instances is None or uid is None:
-                return None
-            view = instances.get(uid)
-            if view is None:
-                return None
-            if not hasattr(view, "is_fullscreen"):
-                return None
-            return bool(view.is_fullscreen)
-        except (AttributeError, TypeError, RuntimeError):
-            return None
+        """Observe Qt/WinForms top-level window geometry on the GUI thread."""
+        return native_fullscreen(window)
 
     def get_state(self) -> dict[str, object]:
         with self._lock:
