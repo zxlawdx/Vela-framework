@@ -64,3 +64,43 @@ automáticos não fazem autenticação.
 ## Vela Docs
 
 A interface integrada, configuração e limitações estão em [VELA_DOCS.md](VELA_DOCS.md).
+
+## Janela desktop (pywebview)
+
+A aplicação pode chamar a API reutilizável do shell Vela:
+
+```javascript
+await Vela.platform.window.enterFullscreen();
+await Vela.platform.window.exitFullscreen();
+await Vela.platform.window.toggleFullscreen();
+await Vela.platform.window.setFullscreen(true);
+const state = await Vela.platform.window.getState();
+// { ok, available, fullscreen, managed, width, height }
+```
+
+O fullscreen é nativo, acionado por `pywebview.Window.toggle_fullscreen()`,
+não é um overlay CSS. Os métodos `setFullscreen` são idempotentes: repetir
+`true` ou `false` não alterna a janela novamente. O backend mantém um
+estado **gerenciado pela API Vela**; pywebview não fornece uma propriedade
+portável que detecte alterações externas feitas pelo sistema operacional.
+Não interprete `managed: true` como telemetria nativa independente.
+
+Os eventos são publicados no barramento do Vela:
+
+```javascript
+const listener = event => {
+  if (event.detail?.name === 'window:state')
+    console.log(event.detail.payload.fullscreen);
+};
+window.addEventListener('vela:event', listener);
+// Remova ao destruir a página:
+window.removeEventListener('vela:event', listener);
+```
+
+Métodos são expostos também na bridge, `window_set_fullscreen(boolean)`,
+`window_toggle_fullscreen()` e `window_get_state()`. Erros são estruturados
+como `{ok:false,error:...}` na bridge e lançam exceção pela API JS para
+permitir tratamento na aplicação. Após fechar a janela o estado é desligado.
+O framework não decide qual tecla ativa o recurso: F5 e F11 são atalhos da
+aplicação consumidora. Windows/Linux e outras GUIs devem ser validados
+nativamente; testes com fakes cobrem somente o contrato de controle.
