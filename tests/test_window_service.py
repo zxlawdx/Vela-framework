@@ -19,9 +19,7 @@ class FakeWindow:
         self.scripts = []
         self.uid = "fake-window"
         self.native = SimpleNamespace(is_fullscreen=False)
-        self.gui = SimpleNamespace(
-            BrowserView=SimpleNamespace(instances={self.uid: self.native})
-        )
+        self.gui = SimpleNamespace(BrowserView=SimpleNamespace(instances={self.uid: self.native}))
 
     def toggle_fullscreen(self):
         self.toggles += 1
