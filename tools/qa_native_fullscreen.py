@@ -6,6 +6,7 @@ loop, enters fullscreen, verifies widget state and screen bounds, captures
 a screenshot, then restores the original window. A virtual/offscreen Qt
 platform is reported explicitly and is NOT proof of OS fullscreen.
 """
+
 from __future__ import annotations
 
 import json
