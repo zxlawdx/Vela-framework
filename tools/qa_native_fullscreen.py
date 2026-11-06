@@ -29,9 +29,7 @@ def main() -> None:
     view.setWindowTitle("Vela Native Fullscreen QA")
     content = QLabel("VELA QT FULLSCREEN — CAPTURA REAL")
     content.setAlignment(Qt.AlignCenter)
-    content.setStyleSheet(
-        "QLabel{font-size:30px;background:#192f52;color:white;}"
-    )
+    content.setStyleSheet("QLabel{font-size:30px;background:#192f52;color:white;}")
     view.setCentralWidget(content)
     view.setGeometry(100, 100, 900, 600)
     view.showNormal()
@@ -69,8 +67,7 @@ def main() -> None:
     destination = Path("docs/images/qa-native-fullscreen")
     destination.mkdir(parents=True, exist_ok=True)
     screenshot = destination / (
-        "windows-qt-fullscreen.png" if os.name == "nt"
-        else "linux-qt-fullscreen.png"
+        "windows-qt-fullscreen.png" if os.name == "nt" else "linux-qt-fullscreen.png"
     )
     if not screen.grabWindow(0).save(str(screenshot)):
         screenshot = destination / "window-grab.png"
