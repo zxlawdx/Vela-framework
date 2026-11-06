@@ -34,8 +34,9 @@ class WindowServiceTests(unittest.TestCase):
     def setUp(self):
         # Unit fakes verify the idempotent service contract. Native UI geometry
         # must be tested separately in actual Qt/WinForms GUI runners.
-        patcher=mock.patch.object(
-            NativeWindowService, "_native_fullscreen",
+        patcher = mock.patch.object(
+            NativeWindowService,
+            "_native_fullscreen",
             side_effect=lambda window: (
                 window.native.is_fullscreen if window and window.gui is not None else None
             ),
@@ -50,8 +51,9 @@ class WindowServiceTests(unittest.TestCase):
         self.assertTrue(_covers_screen((-1920, 0, 1920, 1080), (-1920, 0, 1920, 1080)))
 
     def test_boolean_only_fake_is_not_native_verification(self):
-        window=FakeWindow()
+        window = FakeWindow()
         self.assertIsNone(native_fullscreen(window))
+
     def test_not_attached_or_invalid_boolean(self):
         service = NativeWindowService()
         self.assertFalse(service.get_state()["available"])
