@@ -7,8 +7,8 @@ from types import SimpleNamespace
 from unittest import mock
 
 from vela.core.bridge import BaseBridge
-from vela.core.window_service import NativeWindowService
 from vela.core.native_window_probe import _covers_screen, native_fullscreen
+from vela.core.window_service import NativeWindowService
 
 
 class FakeWindow:
