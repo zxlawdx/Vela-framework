@@ -68,6 +68,7 @@ def qt_client_bounds(view):
     except (AttributeError, OSError, RuntimeError, TypeError, ValueError):
         return None
 
+
 def qt_fullscreen(view):
     """Probe a QMainWindow on its GUI thread, never a worker thread."""
     try:
