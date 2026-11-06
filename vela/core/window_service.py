@@ -111,7 +111,8 @@ class NativeWindowService:
                 self._fullscreen = enabled
                 state = self.get_state()
                 state.update(
-                    ok=False, verified=False,
+                    ok=False,
+                    verified=False,
                     error="Backend não informa o estado fullscreen real; alteração não confirmada.",
                 )
                 return state
