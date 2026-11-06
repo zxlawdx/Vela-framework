@@ -92,8 +92,12 @@ class DesktopWindow:
 
         icon_arg = str(icon_file.resolve()) if icon_file and icon_file.is_file() else None
         gui = os.environ.get("VELA_GUI") or None
-        webview.start(gui=gui, debug=self.debug, icon=icon_arg)
-        self._window = None
+        try:
+            webview.start(gui=gui, debug=self.debug, icon=icon_arg)
+        finally:
+            if self.bridge and hasattr(self.bridge, "_detach_window"):
+                self.bridge._detach_window()
+            self._window = None
 
     def stop(self):
         window, self._window = self._window, None
