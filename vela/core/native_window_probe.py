@@ -92,7 +92,10 @@ def qt_fullscreen(view):
         @Slot()
         def sample(self):
             try:
-                screen_obj = view.screen()
+                # pywebview's Qt BrowserView stores a QRect in view.screen.
+                # The QWindow still exposes the monitor for the native widget.
+                handle = view.windowHandle()
+                screen_obj = handle.screen() if handle is not None else None
                 if screen_obj is None:
                     return
                 display = screen_obj.geometry()
