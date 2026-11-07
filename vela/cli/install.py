@@ -120,7 +120,7 @@ def install_bundle(bundle, scope="user", notify=print):
             if target.exists():
                 # instalacao anterior e substituida somente neste diretorio conhecido.
                 shutil.rmtree(target)
-            shutil.copytree(bundle, target)
+            shutil.copytree(bundle, target, symlinks=True)
         desktop.parent.mkdir(parents=True, exist_ok=True)
         desktop.write_text(desktop_entry(meta, target), encoding="utf-8")
         desktop.chmod(0o644)

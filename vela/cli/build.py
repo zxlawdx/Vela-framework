@@ -24,6 +24,8 @@ class BuildOptions:
     dry_run: bool = False
     tailwind: bool = False
     plugins: bool = False
+    resolve_dependencies: bool = False
+    assume_yes: bool = False
 
 
 # Setuptools anteriores a 82 ainda incluem pkg_resources, que usa um
@@ -266,7 +268,10 @@ def build_plan(root, options):
     settings = read_settings(root)
     meta = identity(settings)
     system = platform_id()
-    gui = backend_for(options.gui, system)
+    gui = backend_for(
+        "qt6" if options.installer and options.gui == "auto" and system == "windows"
+        else options.gui, system
+    )
     icon = options.icon or getattr(settings, "APP_ICON", "")
     icon_path = (root / icon).resolve() if icon else None
     if icon_path and not icon_path.is_file():
@@ -312,6 +317,7 @@ def build_plan(root, options):
         cmd += ["--icon", str(icon_path)]
     cmd.append(str(entry))
     return {"root": root, "meta": meta, "gui": gui, "system": system,
+            "asset_config": getattr(settings, "ASSETS", None),
             "icon": icon_path, "output": output, "entry": entry,
             "bundle": output / meta["slug"], "command": cmd,
             "folders": folders}
@@ -325,13 +331,50 @@ def sha256(path):
     return digest.hexdigest()
 
 
+def _install_build_dependencies(root, packages):
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", *packages],
+        cwd=root,
+        check=True,
+    )
+    importlib.invalidate_caches()
+
+
 def build_app(root=None, options=None, notify=print):
     options = options or BuildOptions()
-    plan = build_plan(root or Path.cwd(), options)
+    root = Path(root or Path.cwd()).resolve()
+    if options.resolve_dependencies and not options.dry_run:
+        if sys.prefix == getattr(sys, "base_prefix", sys.prefix):
+            raise RuntimeError("Ative um ambiente virtual para resolver dependências de build.")
+        if not (root / "manage.py").is_file() or not (root / "config/settings.py").is_file():
+            raise FileNotFoundError("Execute buildapp na raiz de um projeto Vela")
+        if (root / "requirements.txt").is_file():
+            notify("Instalando dependências Python declaradas pelo projeto...")
+            _install_build_dependencies(root, ["-r", "requirements.txt"])
+    plan = build_plan(root, options)
     if options.dry_run:
         notify("Plataforma: " + plan["system"] + ", backend: " + plan["gui"])
         notify("Comando: " + subprocess.list2cmdline(plan["command"]))
         return plan
+    compiler = None
+    if options.installer:
+        from vela.cli.standalone_installer import find_iscc, installer_name
+
+        installer_name({**plan["meta"], "platform": plan["system"]})
+        if plan["system"] == "windows":
+            compiler = find_iscc()
+        elif plan["system"] != "linux":
+            raise ValueError("Instalador independente disponível para Windows e Linux.")
+    if options.resolve_dependencies:
+        gui_packages = {
+            "qt6": ["PyQt6>=6.8,<7", "PyQt6-WebEngine>=6.8,<7", "qtpy>=2.4,<3"],
+            "qt5": ["PyQt5>=5.15,<6", "PyQtWebEngine>=5.15,<6", "qtpy>=2.4,<3"],
+        }
+        notify("Preparando PyInstaller e o backend gráfico no ambiente de build...")
+        _install_build_dependencies(root, [
+            "PyInstaller>=6.16,<7", *LEGACY_PKG_RESOURCES_PIP,
+            *gui_packages.get(plan["gui"], []),
+        ])
     if importlib.util.find_spec("PyInstaller") is None:
         raise RuntimeError("PyInstaller ausente: pip install 'vela-framework[build]'")
     if plan["gui"] == "qt6" and importlib.util.find_spec("PyQt6") is None:
@@ -375,17 +418,22 @@ def build_app(root=None, options=None, notify=print):
     validate_legacy_pkg_resources()
     from vela.cli.collectstatic import collect_static
     notify("Coletando estaticos...")
-    if options.tailwind:
+    asset_config = plan["asset_config"] or {}
+    build_tailwind = asset_config.get("tailwind", options.tailwind)
+    if build_tailwind:
         from vela.core.api_server import CORE_DIR
         (plan["root"] / ".vela-build").mkdir(parents=True, exist_ok=True)
         shutil.copy2(CORE_DIR / "shell.html",
                      plan["root"] / ".vela-build/framework-shell.html")
     report = collect_static(apps_dir=str(plan["root"] / "apps"),
                             output_dir=str(plan["root"] / "staticfiles"),
-                            verbose=False, skip_tailwind=not options.tailwind)
+                            verbose=False, skip_tailwind=not build_tailwind,
+                            asset_config=plan["asset_config"],
+                            assume_yes=options.assume_yes,
+                            project_root=plan["root"])
     if report["errors"]:
         raise RuntimeError("Falha ao copiar arquivos estaticos")
-    if options.tailwind and not report["tailwind_bundle"]:
+    if build_tailwind and not report["tailwind_bundle"]:
         raise RuntimeError("Tailwind offline nao foi compilado. Verifique Node.js, npm e Tailwind CLI.")
     plan["entry"].parent.mkdir(parents=True, exist_ok=True)
     plan["entry"].write_text(launcher_source(plan["gui"]), encoding="utf-8")
@@ -462,5 +510,18 @@ def build_app(root=None, options=None, notify=print):
     (archive.parent / (archive.name + ".sha256")).write_text(
         sha256(archive) + "  " + archive.name + "\n", encoding="utf-8")
     plan["archive"] = archive
+    if options.installer:
+        from vela.cli.standalone_installer import build_linux_installer, build_windows_installer
+
+        notify("Gerando instalador independente...")
+        if compiler:
+            installer = build_windows_installer(bundle, meta, plan["output"], plan["icon"], compiler)
+        else:
+            installer = build_linux_installer(bundle, meta, plan["output"])
+        installer.with_name(installer.name + ".sha256").write_text(
+            sha256(installer) + "  " + installer.name + "\n", encoding="utf-8"
+        )
+        plan["installer"] = installer
+        notify("Instalador: " + str(installer))
     notify("Build concluido: " + str(archive))
     return plan

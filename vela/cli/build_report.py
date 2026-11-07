@@ -42,6 +42,8 @@ def build_report(plan: dict, project_root: str | Path = ".") -> dict[str, object
         "assets": assets,
         "entrypoint": str(plan.get("entry") or "config/wsgi.py"),
         "executable": str(executable or ""),
+        "archive": str(plan.get("archive") or ""),
+        "installer": str(plan.get("installer") or ""),
         "warnings": warnings,
     }
 

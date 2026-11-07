@@ -183,6 +183,41 @@ jobs:
           ./dist/Smokeapp/Smokeapp --self-test
           test -f dist/Smokeapp/Instalar.sh
           test -n "$(find dist -maxdepth 1 -name '*.zip' -print -quit)"
+          export XDG_DATA_HOME="$(mktemp -d)"
+          ./dist/*-Setup.run
+          "$XDG_DATA_HOME/vela-apps/Smokeapp/Smokeapp" --self-test
+          test -f "$XDG_DATA_HOME/applications/Smokeapp.desktop"
+
+  windows-installer-smoke:
+    needs: tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Vela build tools
+        run: python -m pip install -e ".[build,qt6]"
+      - name: Build and install in an isolated destination
+        shell: pwsh
+        run: |
+          vela startproject smokeapp
+          Set-Location smokeapp
+          python manage.py buildapp --gui qt6 --installer
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $setup = Get-ChildItem dist/*-Setup.exe | Select-Object -First 1
+          if (-not $setup) { throw "Setup.exe ausente" }
+          $target = Join-Path $env:RUNNER_TEMP "Vela Test Install"
+          $install = Start-Process -FilePath $setup.FullName -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', ('/DIR="' + $target + '"')
+          ) -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Instalador falhou: $($install.ExitCode)" }
+          $app = Start-Process -FilePath (Join-Path $target 'Smokeapp.exe') -ArgumentList '--self-test' -Wait -PassThru
+          if ($app.ExitCode -ne 0) { throw "Executável instalado falhou: $($app.ExitCode)" }
+          if (-not (Test-Path (Join-Path $target 'apps/home/templates/home.html'))) { throw "Template ausente" }
+          if (-not (Test-Path (Join-Path $target 'staticfiles/home/starter.js'))) { throw "JavaScript ausente" }
+          if (-not (Test-Path (Join-Path $target 'staticfiles/home/starter.css'))) { throw "CSS ausente" }
+          if (-not (Test-Path (Join-Path $target 'unins000.exe'))) { throw "Desinstalador ausente" }
 
   package-smoke:
     needs: tests

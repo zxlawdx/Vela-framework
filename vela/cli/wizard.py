@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import platform
 import queue
+import subprocess
 import threading
 import traceback
 from pathlib import Path
@@ -45,6 +46,7 @@ def launch_wizard(root=None):
             self.icon = tk.StringVar(value=str(getattr(self.settings, "APP_ICON", "")))
             self.want_installer = tk.BooleanVar(value=True)
             self.want_tailwind = tk.BooleanVar(value=False)
+            self.resolve_dependencies = tk.BooleanVar(value=False)
             self.scope = tk.StringVar(value="user")
             self.status = tk.StringVar(value="Pronto")
             self.steps = [
@@ -125,10 +127,15 @@ def launch_wizard(root=None):
                     side="left", fill="x", expand=True)
                 ttk.Button(line, text="Procurar...", command=self.select_icon).pack(
                     side="left", padx=8)
-                ttk.Checkbutton(self.content, text="Gerar scripts de instalação no ZIP",
+                ttk.Checkbutton(self.content, text="Gerar instalador independente",
                                 variable=self.want_installer).pack(anchor="w", pady=12)
                 ttk.Checkbutton(self.content, text="Compilar CSS offline com Tailwind (requer Node.js)",
                                 variable=self.want_tailwind).pack(anchor="w", pady=6)
+                ttk.Checkbutton(
+                    self.content,
+                    text="Preparar dependências Python e npm do projeto durante o build",
+                    variable=self.resolve_dependencies,
+                ).pack(anchor="w", pady=6)
                 self.label("Instalar depois do build:")
                 ttk.Radiobutton(self.content, text="Somente para meu usuário (recomendado)",
                                 variable=self.scope, value="user").pack(anchor="w", pady=4)
@@ -238,6 +245,8 @@ def launch_wizard(root=None):
                         if self.step == 3:
                             self.install_btn.config(state="normal")
                             self.output.insert("end", "Pacote: " + str(value["archive"]) + "\n")
+                            if value.get("installer"):
+                                self.output.insert("end", "Instalador: " + str(value["installer"]) + "\n")
                     else:
                         self.status.set("Operação concluída.")
                         if self.step == 2:
@@ -272,7 +281,9 @@ def launch_wizard(root=None):
             options = BuildOptions(
                 gui=self.gui.get(), icon=self.icon.get(),
                 installer=self.want_installer.get(),
-                tailwind=self.want_tailwind.get())
+                tailwind=self.want_tailwind.get(),
+                resolve_dependencies=self.resolve_dependencies.get(),
+                assume_yes=self.resolve_dependencies.get())
             self.run_worker(lambda: build_app(self.project, options, notify=self.log))
 
         def install(self):
@@ -283,8 +294,13 @@ def launch_wizard(root=None):
                                        " (" + self.scope.get() + ")?",
                                        parent=self.window):
                 return
-            self.run_worker(lambda: install_bundle(self.result["bundle"],
-                                                    scope=self.scope.get(),
-                                                    notify=self.log))
+            scope = self.scope.get()
+            installer = self.result.get("installer")
+            if installer and scope == "user":
+                self.run_worker(lambda: subprocess.run([str(installer)], check=True))
+            else:
+                self.run_worker(lambda: install_bundle(self.result["bundle"],
+                                                        scope=scope,
+                                                        notify=self.log))
 
     Wizard(root).window.mainloop()
