@@ -253,6 +253,7 @@ def collect_static(
     asset_config: dict | None = None,
     assume_yes: bool = False,
     allow_install: bool = True,
+    project_root: str | Path | None = None,
 ) -> dict:
     """Prepare project assets and collect them into the runtime static directory.
 
@@ -263,7 +264,7 @@ def collect_static(
     scripts and Python hooks run before files are copied. Missing project-local
     npm dependencies require explicit confirmation, unless ``assume_yes`` is set.
     """
-    project_root = Path.cwd()
+    project_root = Path(project_root or Path.cwd()).resolve()
     output = (project_root / output_dir).resolve()
     output.mkdir(parents=True, exist_ok=True)
 

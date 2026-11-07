@@ -80,11 +80,38 @@ aceita `.png` para janela e atalho. O ícone é passado ao
 - macOS: compilação local experimental; um instalador macOS integrado
   ainda não está validado nesta versão.
 
-**Limite importante:** `--installer` gera scripts de instalação e integração
-ao sistema, **não** um MSI/EXE do Inno Setup ou pacote DEB/RPM nativo.
-Esses formatos dependem de toolchains adicionais e devem ser
-implementados/testados separadamente. O Windows pode precisar do WebView2
-Runtime quando a GUI nativa for escolhida.
+### Instalador independente
+
+Execute na raiz do projeto com um ambiente virtual ativo:
+
+```bash
+python manage.py buildapp --installer --resolve-dependencies --yes
+```
+
+- **Windows:** disponibilize apenas o arquivo `*-Setup.exe` de `dist/`.
+  O instalador usa Inno Setup 6 para exibir assistente, barra de progresso,
+  atalho e desinstalação por usuário. Configure `APP_ICON = "assets/logo.ico"`
+  ou passe `--icon assets/logo.ico` para personalizar o executável e o Setup.
+  Na máquina de build, instale Inno Setup 6 ou defina `VELA_ISCC` para
+  o caminho de `ISCC.exe`.
+- **Linux:** disponibilize o `*-Setup.run`. O usuário pode executar
+  `chmod +x Arquivo-Setup.run` e depois `./Arquivo-Setup.run` para
+  instalar pelo terminal. O instalador usa utilitários Linux usuais e
+  instala na conta atual. Bibliotecas nativas e compatibilidade de
+  glibc dependem da distribuição de destino.
+
+`--resolve-dependencies` instala as dependências de `requirements.txt`,
+do empacotador e do backend Qt escolhido no ambiente virtual de build.
+`--yes` autoriza a instalação de pacotes npm locais quando o projeto
+declara um pipeline de assets. Python, Node/npm e compiladores são
+ferramentas da máquina de build. O instalador leva o bundle já construído,
+incluindo Python, bibliotecas do app, templates, arquivos estáticos e
+assets. Por padrão, a distribuição Windows usa Qt6 para incluir o
+motor gráfico. O backend Windows `--gui native` depende do WebView2
+disponível no sistema. Inclua dependências de importação dinâmica nos
+hooks de build do projeto quando o PyInstaller não puder detectá-las.
+
+O ZIP portátil continua disponível, assim como o SHA-256 de cada artefato.
 
 O PyInstaller compila para o **SO no qual é executado**. O comando
 `makeworkflow` cria jobs Windows/Linux nativos (com PyQt6 no Linux)

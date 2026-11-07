@@ -225,6 +225,8 @@ class CommandRunner:
         )
         parser.add_argument("--icon", default="")
         parser.add_argument("--installer", action="store_true")
+        parser.add_argument("--resolve-dependencies", action="store_true")
+        parser.add_argument("--yes", action="store_true")
         parser.add_argument("--output", default="dist")
         parser.add_argument("--dry-run", action="store_true")
         parser.add_argument("--tailwind", action="store_true")
@@ -242,6 +244,8 @@ class CommandRunner:
                 dry_run=parsed.dry_run,
                 tailwind=parsed.tailwind,
                 plugins=parsed.plugins,
+                resolve_dependencies=parsed.resolve_dependencies,
+                assume_yes=parsed.yes,
             )
         )
         report = write_build_report(plan)

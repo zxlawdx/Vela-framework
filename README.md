@@ -661,7 +661,12 @@ dist/
 └── build-report.json           # ambiente, backend, apps, imports e warnings
 ```
 
-Com `--installer`, o bundle recebe script de instalação do sistema (`Instalar.sh` ou `Instalar.cmd`). Isso **não** significa gerar MSI/EXE Inno Setup, DEB ou RPM.
+Com `--installer`, o Vela também gera um arquivo independente do ZIP.
+No Windows, o `*-Setup.exe` inclui assistente com barra de progresso, atalho,
+desinstalador e o ícone `APP_ICON` do projeto quando configurado como `.ico`.
+O compilador Inno Setup 6 é necessário apenas na máquina de build.
+No Linux, o `*-Setup.run` extrai e instala o bundle com progresso por etapas no terminal.
+Ambos incluem o runtime empacotado e os arquivos do app, inclusive HTML, CSS e JavaScript.
 
 O build também valida o backend escolhido e executa smoke/self-test do binário congelado antes da publicação do pacote quando aplicável.
 

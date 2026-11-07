@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Cria workflow multiplataforma para GitHub Actions."""
+
 from pathlib import Path
 
 WORKFLOW = """name: Vela Build & Release
@@ -51,6 +52,9 @@ jobs:
             libdbus-1-3 libasound2 libxkbcommon-x11-0 libxcb-cursor0 \
             libxcb-xinerama0 libxcb-icccm4 libxcb-keysyms1 libxcb-image0 \
             libxcb-render-util0 libxcb-shape0 libgl1-mesa-dri
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Instalar dependencias Python
         run: |
           python -m pip install --upgrade pip
@@ -62,13 +66,14 @@ jobs:
           python -m pip install "PyInstaller>=6.16,<7" "PyQt6>=6.8,<7" \
             "PyQt6-WebEngine>=6.8,<7" "qtpy>=2.4,<3"
       - name: Compilar Linux
-        run: python manage.py buildapp --gui qt6 --installer
+        run: python manage.py buildapp --gui qt6 --installer --yes
       - uses: actions/upload-artifact@v4
         with:
           name: Vela-Linux
           path: |
             dist/*.zip
-            dist/*.zip.sha256
+            dist/*.run
+            dist/*.sha256
           if-no-files-found: error
 
   windows:
@@ -79,6 +84,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Instalar dependencias
         shell: pwsh
         run: |
@@ -88,15 +96,16 @@ jobs:
           } else {
             python -m pip install git+https://github.com/zxlawdx/Vela-framework.git
           }
-          python -m pip install "PyInstaller>=6.16,<7"
-      - name: Compilar Windows
-        run: python manage.py buildapp --gui native --installer
+          python -m pip install "PyInstaller>=6.16,<7" "PyQt6>=6.8,<7" "PyQt6-WebEngine>=6.8,<7" "qtpy>=2.4,<3"
+      - name: Compilar Windows (Inno Setup 6 do runner)
+        run: python manage.py buildapp --gui qt6 --installer --yes
       - uses: actions/upload-artifact@v4
         with:
           name: Vela-Windows
           path: |
             dist/*.zip
-            dist/*.zip.sha256
+            dist/*-Setup.exe
+            dist/*.sha256
           if-no-files-found: error
 
   release:
@@ -112,7 +121,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" release/*.zip release/*.sha256 \
+          gh release create "$GITHUB_REF_NAME" release/*.zip release/*.run release/*-Setup.exe release/*.sha256 \
             --repo "$GITHUB_REPOSITORY" --generate-notes --verify-tag
 """
 
