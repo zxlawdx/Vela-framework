@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Instalacao desktop e atalhos. Nao solicita nem armazena senhas."""
+
 from __future__ import annotations
 
 import argparse
@@ -33,27 +34,35 @@ def read_manifest(bundle):
 def linux_paths(slug, scope="user"):
     slug = safe_slug(slug)
     if scope == "system":
-        return (Path("/opt/vela") / slug,
-                Path("/usr/share/applications") / (slug + ".desktop"),
-                Path("/usr/share/mime/packages") / (slug + ".xml"))
+        return (
+            Path("/opt/vela") / slug,
+            Path("/usr/share/applications") / (slug + ".desktop"),
+            Path("/usr/share/mime/packages") / (slug + ".xml"),
+        )
     if scope != "user":
         raise ValueError("Escopo valido: user ou system")
     home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share"))
-    return (home / "vela-apps" / slug, home / "applications" / (slug + ".desktop"),
-            home / "mime/packages" / (slug + ".xml"))
+    return (
+        home / "vela-apps" / slug,
+        home / "applications" / (slug + ".desktop"),
+        home / "mime/packages" / (slug + ".xml"),
+    )
 
 
 def desktop_entry(meta, install_root):
     """Gera arquivo freedesktop sem comandos de shell arbitrarios."""
+
     def text(value):
         return str(value).replace("\r", " ").replace("\n", " ").replace("%", "%%")
+
     def quote_path(path):
         escaped = str(path).replace("\\", "\\\\").replace('"', '\\"')
         return '"' + escaped + '"'
 
     icon = install_root / meta["icon"] if meta.get("icon") else None
     lines = [
-        "[Desktop Entry]", "Type=Application",
+        "[Desktop Entry]",
+        "Type=Application",
         "Name=" + text(meta["name"]),
         "Comment=" + text(meta.get("description", "")),
         "Exec=" + quote_path(install_root / meta["executable"]) + " %F",
@@ -74,17 +83,23 @@ def _write_mime(meta, destination):
     if not patterns:
         return
     from xml.sax.saxutils import escape
+
     destination.parent.mkdir(parents=True, exist_ok=True)
     glob_elements = []
     for extension in patterns:
         if not re.fullmatch(r"\.[A-Za-z0-9.]{1,40}", extension):
             raise ValueError("Extensao de arquivo invalida: " + extension)
         glob_elements.append('<glob pattern="*' + escape(extension) + '"/>')
-    xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
-           '<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">\n'
-           '<mime-type type="application/x-vela-' + meta["slug"].lower() + '">\n'
-           '<comment>' + escape(meta["name"]) + '</comment>\n' +
-           "\n".join(glob_elements) + '\n</mime-type></mime-info>\n')
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">\n'
+        '<mime-type type="application/x-vela-' + meta["slug"].lower() + '">\n'
+        "<comment>"
+        + escape(meta["name"])
+        + "</comment>\n"
+        + "\n".join(glob_elements)
+        + "\n</mime-type></mime-info>\n"
+    )
     destination.write_text(xml, encoding="utf-8")
 
 
@@ -98,8 +113,16 @@ def _elevate_linux(bundle):
         # Reexecuta o proprio binario, que entende --vela-install.
         cmd = [pkexec, sys.executable, "--vela-install", "--scope=system"]
     else:
-        cmd = [pkexec, sys.executable, "-m", "vela.cli.install",
-               "--bundle", str(Path(bundle).resolve()), "--scope", "system"]
+        cmd = [
+            pkexec,
+            sys.executable,
+            "-m",
+            "vela.cli.install",
+            "--bundle",
+            str(Path(bundle).resolve()),
+            "--scope",
+            "system",
+        ]
     subprocess.run(cmd, check=True)
 
 
@@ -136,7 +159,8 @@ def install_bundle(bundle, scope="user", notify=print):
     if system == "Windows":
         if scope == "system":
             raise NotImplementedError(
-                "Instalacao global Windows depende de instalador MSI/Inno Setup")
+                "Instalacao global Windows depende de instalador MSI/Inno Setup"
+            )
         localapp = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData/Local")))
         target = localapp / "Programs" / "Vela" / meta["slug"]
         if bundle != target:
@@ -149,8 +173,10 @@ def install_bundle(bundle, scope="user", notify=print):
         start_menu.mkdir(parents=True, exist_ok=True)
         # O nome exibido pode ser livre; o arquivo de atalho usa slug validado.
         shortcut = start_menu / (meta["slug"] + ".lnk")
+
         def ps_string(value):
             return "'" + str(value).replace("'", "''") + "'"
+
         script = (
             "$shell=New-Object -ComObject WScript.Shell; "
             f"$s=$shell.CreateShortcut({ps_string(shortcut)}); "

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Cria workflow multiplataforma para GitHub Actions."""
+
 from pathlib import Path
 
 WORKFLOW = """name: Vela Build & Release
