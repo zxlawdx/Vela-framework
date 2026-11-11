@@ -25,6 +25,27 @@ class LoggerEncodingTests(unittest.TestCase):
             logger._logger.removeHandler(handler)
             handler.close()
 
+    def test_frozen_linux_logs_use_user_state_directory(self):
+        with (
+            patch.object(logger_module.sys, "frozen", True, create=True),
+            patch.object(logger_module.sys, "platform", "linux"),
+            patch.dict(logger_module.os.environ, {"XDG_STATE_HOME": "/tmp/user-state"}, clear=True),
+        ):
+            self.assertEqual(logger_module._log_dir(), Path("/tmp/user-state/vela/logs"))
+
+    def test_unwritable_log_directory_does_not_prevent_startup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "not-a-directory"
+            root.write_text("occupied")
+            console = io.StringIO()
+            with patch.object(logger_module.sys, "stderr", console):
+                log = self._new_logger(root)
+                try:
+                    log.info("application continues")
+                finally:
+                    self._close_logger(log)
+            self.assertIn("application continues", console.getvalue())
+
     def test_cp1252_console_escapes_unicode_without_losing_file_log(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

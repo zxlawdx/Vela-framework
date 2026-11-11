@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -13,6 +14,14 @@ import webview
 from vela.log.logger import VelaLogger
 
 CORE_DIR = Path(__file__).resolve().parent
+
+
+def configure_linux_display(environ=None, platform_name=None):
+    """Use XWayland when available; preserve explicit Qt and native Wayland choices."""
+    env = os.environ if environ is None else environ
+    platform_name = sys.platform if platform_name is None else platform_name
+    if platform_name.startswith("linux") and env.get("DISPLAY"):
+        env.setdefault("QT_QPA_PLATFORM", "xcb")
 
 
 class DesktopWindow:
@@ -59,6 +68,7 @@ class DesktopWindow:
         )
 
     def run(self):
+        configure_linux_display()
         shell_url = self._get_shell_url()
         self._window = webview.create_window(
             title=self.title,
