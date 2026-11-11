@@ -8,9 +8,9 @@ from pathlib import Path
 os.environ.setdefault("QTWEBENGINE_DISABLE_SANDBOX", "1")
 os.environ.setdefault("QT_OPENGL", "software")
 os.environ.setdefault("LIBGL_ALWAYS_SOFTWARE", "1")
-from PyQt6.QtCore import QTimer, QUrl
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWidgets import QApplication
+from qtpy.QtCore import QTimer, QUrl
+from qtpy.QtWebEngineWidgets import QWebEngineView
+from qtpy.QtWidgets import QApplication
 
 out = Path(os.environ.get("GUI_ARTIFACT_DIR", "artifacts"))
 out.mkdir(parents=True, exist_ok=True)
@@ -59,4 +59,4 @@ view.loadFinished.connect(capture)
 QTimer.singleShot(25000, finish)
 view.setHtml(html, QUrl("about:blank"))
 view.show()
-sys.exit(app.exec())
+sys.exit(app.exec_())
