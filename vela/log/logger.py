@@ -16,9 +16,17 @@ def _log_dir() -> Path:
         return Path(override).expanduser()
     if getattr(sys, "frozen", False):
         if sys.platform == "win32":
-            root = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+            root = (
+                Path(os.environ["LOCALAPPDATA"])
+                if os.environ.get("LOCALAPPDATA")
+                else Path.home() / "AppData" / "Local"
+            )
         else:
-            root = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state"))
+            root = (
+                Path(os.environ["XDG_STATE_HOME"])
+                if os.environ.get("XDG_STATE_HOME")
+                else Path.home() / ".local" / "state"
+            )
         return root / "vela" / "logs"
     return Path.cwd() / "logs"
 
