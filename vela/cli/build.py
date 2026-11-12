@@ -233,7 +233,6 @@ def launcher_source(gui):
         '    os.environ["VELA_GUI"] = "qt"\n'
         '    os.environ["QT_API"] = "pyqt6" if GUI == "qt6" else "pyqt5"\n'
         '    if sys.platform.startswith("linux") and os.getenv("VELA_HARDWARE_ACCELERATION") != "1":\n'
-        '        os.environ.setdefault("QT_XCB_GL_INTEGRATION", "none")\n'
         '        os.environ.setdefault("QT_QUICK_BACKEND", "software")\n'
         '        os.environ.setdefault("LIBGL_ALWAYS_SOFTWARE", "1")\n'
         '        flags = os.getenv("QTWEBENGINE_CHROMIUM_FLAGS", "")\n'
@@ -400,6 +399,30 @@ def _install_build_dependencies(root, packages):
     importlib.invalidate_caches()
 
 
+def remove_conflicting_linux_libraries(bundle):
+    """Use host runtimes together with the host's Mesa and GIO modules.
+
+    A frozen older libstdc++/GLib cannot satisfy symbols required by newer
+    distribution drivers and gvfs. Unlink bundle entries, never symlink targets.
+    Qt and application-specific libraries remain bundled.
+    """
+    prefixes = (
+        "libstdc++.so.",
+        "libgcc_s.so.",
+        "libglib-2.0.so.",
+        "libgobject-2.0.so.",
+        "libgio-2.0.so.",
+        "libgmodule-2.0.so.",
+        "libgthread-2.0.so.",
+    )
+    removed = []
+    for path in Path(bundle).rglob("*.so.*"):
+        if path.name.startswith(prefixes) and (path.is_file() or path.is_symlink()):
+            removed.append(path.relative_to(bundle).as_posix())
+            path.unlink()
+    return sorted(removed)
+
+
 def build_app(root=None, options=None, notify=print):
     options = options or BuildOptions()
     root = Path(root or Path.cwd()).resolve()
@@ -525,6 +548,10 @@ def build_app(root=None, options=None, notify=print):
     bundle = plan["bundle"]
     if not bundle.is_dir():
         raise RuntimeError("Binario nao encontrado apos o build")
+    if plan["system"] == "linux":
+        removed = remove_conflicting_linux_libraries(bundle)
+        if removed:
+            notify("Runtimes Linux fornecidos pelo sistema: " + ", ".join(removed))
     # O Vela resolve templates e estaticos a partir do cwd; distribua-os
     # junto ao executavel (nao exclusivamente em _internal).
     for folder in plan["folders"]:
