@@ -69,6 +69,7 @@ jobs:
         run: |
           # Do not provide graphics overrides: exercise what the launcher sets.
           timeout 50s xvfb-run -a -s "-screen 0 1280x800x24" python3 tests/linux_launcher_render_probe.py
+          GUI_ARTIFACT_DIR=artifacts/launcher-compat PROBE_COMPATIBILITY=1 timeout 50s xvfb-run -a -s "-screen 0 1280x800x24" python3 tests/linux_launcher_render_probe.py
       - name: Upload screenshot, result and logs
         if: always()
         uses: actions/upload-artifact@v4

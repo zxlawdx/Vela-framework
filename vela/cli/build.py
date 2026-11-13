@@ -213,7 +213,7 @@ def identity(settings):
     }
 
 
-def launcher_source(gui):
+def launcher_source(gui, linux_compatibility=False):
     return (
         '"""Entry point gerado pelo Vela. Nao editar manualmente."""\n'
         "import os, sys\n"
@@ -221,6 +221,7 @@ def launcher_source(gui):
         'os.environ.setdefault("VELA_PRODUCTION", "1")\n'
         "from pathlib import Path\n"
         f"GUI = {gui!r}\n"
+        f"LINUX_COMPATIBILITY = {bool(linux_compatibility)!r}\n"
         'if GUI == "gtk" and "--vela-install" not in sys.argv:\n'
         '    os.environ["PYWEBVIEW_GUI"] = "gtk"\n'
         '    os.environ["VELA_GUI"] = "gtk"\n'
@@ -238,6 +239,13 @@ def launcher_source(gui):
         '        flags = os.getenv("QTWEBENGINE_CHROMIUM_FLAGS", "")\n'
         '        if "--disable-gpu" not in flags:\n'
         '            os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (flags + " --disable-gpu").strip()\n'
+        '    if sys.platform.startswith("linux") and LINUX_COMPATIBILITY and os.getenv("VELA_LINUX_COMPATIBILITY") != "0":\n'
+        '        os.environ.setdefault("QT_OPENGL", "software")\n'
+        '        if os.getenv("DISPLAY"):\n'
+        '            os.environ.setdefault("QT_QPA_PLATFORM", "xcb")\n'
+        '            os.environ.setdefault("QT_XCB_GL_INTEGRATION", "xcb_glx")\n'
+        '        os.environ.setdefault("QTWEBENGINE_DISABLE_SANDBOX", "1")\n'
+        '        print("Vela: modo de compatibilidade Linux ativo; sandbox WebEngine configurado apenas para este processo.", file=sys.stderr, flush=True)\n'
         '    if GUI == "qt6":\n'
         "        from PyQt6.QtWebEngineWidgets import QWebEngineView  # noqa\n"
         "    else:\n"
@@ -373,6 +381,7 @@ def build_plan(root, options):
         "gui": gui,
         "system": system,
         "asset_config": getattr(settings, "ASSETS", None),
+        "linux_compatibility": bool(getattr(settings, "LINUX_WEBENGINE_COMPATIBILITY", False)),
         "icon": icon_path,
         "output": output,
         "entry": entry,
@@ -532,7 +541,9 @@ def build_app(root=None, options=None, notify=print):
             "Tailwind offline nao foi compilado. Verifique Node.js, npm e Tailwind CLI."
         )
     plan["entry"].parent.mkdir(parents=True, exist_ok=True)
-    plan["entry"].write_text(launcher_source(plan["gui"]), encoding="utf-8")
+    plan["entry"].write_text(
+        launcher_source(plan["gui"], plan["linux_compatibility"]), encoding="utf-8"
+    )
     if options.plugins:
         from vela.plugins import apply_build_hooks
 

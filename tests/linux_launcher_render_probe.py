@@ -8,7 +8,9 @@ from vela.cli.build import launcher_source
 
 # Apply precisely the generated setup, before importing Qt. The test runner
 # supplies DISPLAY and, only when necessary in a root container, sandbox policy.
-prefix = launcher_source("qt5").split('    if GUI == "qt6":', 1)[0]
+prefix = launcher_source("qt5", os.environ.get("PROBE_COMPATIBILITY") == "1").split(
+    '    if GUI == "qt6":', 1
+)[0]
 exec(compile(prefix, "generated-launcher-prefix", "exec"), {})
 
 from qtpy.QtCore import QTimer, QUrl

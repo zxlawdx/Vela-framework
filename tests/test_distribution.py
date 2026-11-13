@@ -108,6 +108,36 @@ class DistributionTests(unittest.TestCase):
                 self.assertEqual(os.environ["LIBGL_ALWAYS_SOFTWARE"], "1")
                 self.assertIn("--disable-gpu", os.environ["QTWEBENGINE_CHROMIUM_FLAGS"])
 
+    def test_linux_compatibility_is_opt_in_and_never_enables_remote_debugging(self):
+        for enabled in (False, True):
+            source = launcher_source("qt5", enabled)
+            prefix = source.split('    if GUI == "qt6":', 1)[0]
+            with (
+                patch.dict(os.environ, {"DISPLAY": ":1"}, clear=True),
+                patch.object(sys, "platform", "linux"),
+            ):
+                exec(compile(prefix, "launcher-prefix", "exec"), {})
+                self.assertEqual(
+                    os.environ.get("QTWEBENGINE_DISABLE_SANDBOX"), "1" if enabled else None
+                )
+                self.assertEqual(
+                    os.environ.get("QT_XCB_GL_INTEGRATION"), "xcb_glx" if enabled else None
+                )
+                self.assertNotIn("QTWEBENGINE_REMOTE_DEBUGGING", os.environ)
+        with (
+            patch.dict(os.environ, {"VELA_LINUX_COMPATIBILITY": "0"}, clear=True),
+            patch.object(sys, "platform", "linux"),
+        ):
+            exec(
+                compile(
+                    launcher_source("qt5", True).split('    if GUI == "qt6":', 1)[0],
+                    "launcher-prefix",
+                    "exec",
+                ),
+                {},
+            )
+            self.assertNotIn("QTWEBENGINE_DISABLE_SANDBOX", os.environ)
+
     @unittest.skipIf(os.name == "nt", "GTK build plan é específico de Linux")
     def test_builder_checks_frozen_gui_runtime(self):
         self.assertIn("webview.start(gui=gui", inspect.getsource(DesktopWindow.run))
