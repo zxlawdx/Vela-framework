@@ -47,6 +47,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb libxcb-shape0 libxcb-randr0 libxcb-xfixes0 libxcb-sync1 libxcb-shm0 libxcb-xkb1 libxcb-render0 libx11-xcb1 libxcb-icccm4 libxcb-keysyms1 libxcb-image0 libxcb-render-util0 libxcb-xinerama0 libxcb-cursor0 libegl1 libgl1 libxkbcommon-x11-0 libnss3 libxcomposite1 libxdamage1 libxrandr2 libasound2t64
+          python3 -m pip install --break-system-packages -e .
           python3 -m pip install --break-system-packages "PyQt5>=5.15.11,<6" "PyQtWebEngine>=5.15.7,<6" "qtpy>=2.4,<3"
       - name: Launch QtWebEngine and capture real pixels
         env:
@@ -60,6 +61,15 @@ jobs:
           mkdir -p artifacts
           set -o pipefail
           timeout 50s xvfb-run -a -s "-screen 0 1280x800x24" python3 tests/linux_qt_webengine_smoke.py 2>&1 | tee artifacts/qt-runtime.log
+      - name: Verify generated launcher defaults with native window pixels
+        env:
+          PYTHONPATH: .
+          QTWEBENGINE_DISABLE_SANDBOX: "1"
+          GUI_ARTIFACT_DIR: artifacts/launcher-defaults
+        run: |
+          # Do not provide graphics overrides: exercise what the launcher sets.
+          timeout 50s xvfb-run -a -s "-screen 0 1280x800x24" python3 tests/linux_launcher_render_probe.py
+          GUI_ARTIFACT_DIR=artifacts/launcher-compat PROBE_COMPATIBILITY=1 timeout 50s xvfb-run -a -s "-screen 0 1280x800x24" python3 tests/linux_launcher_render_probe.py
       - name: Upload screenshot, result and logs
         if: always()
         uses: actions/upload-artifact@v4

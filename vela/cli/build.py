@@ -213,7 +213,7 @@ def identity(settings):
     }
 
 
-def launcher_source(gui):
+def launcher_source(gui, linux_compatibility=False):
     return (
         '"""Entry point gerado pelo Vela. Nao editar manualmente."""\n'
         "import os, sys\n"
@@ -221,6 +221,7 @@ def launcher_source(gui):
         'os.environ.setdefault("VELA_PRODUCTION", "1")\n'
         "from pathlib import Path\n"
         f"GUI = {gui!r}\n"
+        f"LINUX_COMPATIBILITY = {bool(linux_compatibility)!r}\n"
         'if GUI == "gtk" and "--vela-install" not in sys.argv:\n'
         '    os.environ["PYWEBVIEW_GUI"] = "gtk"\n'
         '    os.environ["VELA_GUI"] = "gtk"\n'
@@ -233,12 +234,18 @@ def launcher_source(gui):
         '    os.environ["VELA_GUI"] = "qt"\n'
         '    os.environ["QT_API"] = "pyqt6" if GUI == "qt6" else "pyqt5"\n'
         '    if sys.platform.startswith("linux") and os.getenv("VELA_HARDWARE_ACCELERATION") != "1":\n'
-        '        os.environ.setdefault("QT_XCB_GL_INTEGRATION", "none")\n'
         '        os.environ.setdefault("QT_QUICK_BACKEND", "software")\n'
         '        os.environ.setdefault("LIBGL_ALWAYS_SOFTWARE", "1")\n'
         '        flags = os.getenv("QTWEBENGINE_CHROMIUM_FLAGS", "")\n'
         '        if "--disable-gpu" not in flags:\n'
         '            os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (flags + " --disable-gpu").strip()\n'
+        '    if sys.platform.startswith("linux") and LINUX_COMPATIBILITY and os.getenv("VELA_LINUX_COMPATIBILITY") != "0":\n'
+        '        os.environ.setdefault("QT_OPENGL", "software")\n'
+        '        if os.getenv("DISPLAY"):\n'
+        '            os.environ.setdefault("QT_QPA_PLATFORM", "xcb")\n'
+        '            os.environ.setdefault("QT_XCB_GL_INTEGRATION", "xcb_glx")\n'
+        '        os.environ.setdefault("QTWEBENGINE_DISABLE_SANDBOX", "1")\n'
+        '        print("Vela: modo de compatibilidade Linux ativo; sandbox WebEngine configurado apenas para este processo.", file=sys.stderr, flush=True)\n'
         '    if GUI == "qt6":\n'
         "        from PyQt6.QtWebEngineWidgets import QWebEngineView  # noqa\n"
         "    else:\n"
@@ -374,6 +381,7 @@ def build_plan(root, options):
         "gui": gui,
         "system": system,
         "asset_config": getattr(settings, "ASSETS", None),
+        "linux_compatibility": bool(getattr(settings, "LINUX_WEBENGINE_COMPATIBILITY", False)),
         "icon": icon_path,
         "output": output,
         "entry": entry,
@@ -398,6 +406,30 @@ def _install_build_dependencies(root, packages):
         check=True,
     )
     importlib.invalidate_caches()
+
+
+def remove_conflicting_linux_libraries(bundle):
+    """Use host runtimes together with the host's Mesa and GIO modules.
+
+    A frozen older libstdc++/GLib cannot satisfy symbols required by newer
+    distribution drivers and gvfs. Unlink bundle entries, never symlink targets.
+    Qt and application-specific libraries remain bundled.
+    """
+    prefixes = (
+        "libstdc++.so.",
+        "libgcc_s.so.",
+        "libglib-2.0.so.",
+        "libgobject-2.0.so.",
+        "libgio-2.0.so.",
+        "libgmodule-2.0.so.",
+        "libgthread-2.0.so.",
+    )
+    removed = []
+    for path in Path(bundle).rglob("*.so.*"):
+        if path.name.startswith(prefixes) and (path.is_file() or path.is_symlink()):
+            removed.append(path.relative_to(bundle).as_posix())
+            path.unlink()
+    return sorted(removed)
 
 
 def build_app(root=None, options=None, notify=print):
@@ -509,7 +541,9 @@ def build_app(root=None, options=None, notify=print):
             "Tailwind offline nao foi compilado. Verifique Node.js, npm e Tailwind CLI."
         )
     plan["entry"].parent.mkdir(parents=True, exist_ok=True)
-    plan["entry"].write_text(launcher_source(plan["gui"]), encoding="utf-8")
+    plan["entry"].write_text(
+        launcher_source(plan["gui"], plan["linux_compatibility"]), encoding="utf-8"
+    )
     if options.plugins:
         from vela.plugins import apply_build_hooks
 
@@ -525,6 +559,10 @@ def build_app(root=None, options=None, notify=print):
     bundle = plan["bundle"]
     if not bundle.is_dir():
         raise RuntimeError("Binario nao encontrado apos o build")
+    if plan["system"] == "linux":
+        removed = remove_conflicting_linux_libraries(bundle)
+        if removed:
+            notify("Runtimes Linux fornecidos pelo sistema: " + ", ".join(removed))
     # O Vela resolve templates e estaticos a partir do cwd; distribua-os
     # junto ao executavel (nao exclusivamente em _internal).
     for folder in plan["folders"]:

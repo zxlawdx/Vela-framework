@@ -4,6 +4,7 @@
 import inspect
 import json
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,6 +20,7 @@ from vela.cli.build import (
     launcher_source,
     legacy_pkg_resources_collect_args,
     linux_venv_info,
+    remove_conflicting_linux_libraries,
     validate_legacy_pkg_resources,
 )
 from vela.cli.doctor import Check, missing_pip_packages, remedy
@@ -45,6 +47,25 @@ class DistributionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             backend_for("gtk", "windows")
 
+    def test_host_runtime_cleanup_preserves_qt_and_external_symlink_targets(self):
+        bundle = self.root / "bundle"
+        internal = bundle / "_internal"
+        internal.mkdir(parents=True)
+        host = self.root / "host-libstdc++.so.6"
+        host.write_bytes(b"host runtime")
+        if os.name == "nt":
+            (internal / "libstdc++.so.6").write_bytes(b"old runtime")
+        else:
+            (internal / "libstdc++.so.6").symlink_to(host)
+        for name in ("libgio-2.0.so.0", "libglib-2.0.so.0", "libQt5Core.so.5", "libcustom.so.1"):
+            (internal / name).write_bytes(b"fixture")
+        removed = remove_conflicting_linux_libraries(bundle)
+        self.assertEqual(len(removed), 3)
+        self.assertEqual(host.read_bytes(), b"host runtime")
+        self.assertTrue((internal / "libQt5Core.so.5").is_file())
+        self.assertTrue((internal / "libcustom.so.1").is_file())
+        self.assertEqual(remove_conflicting_linux_libraries(bundle), [])
+
     def test_dry_run_never_writes_files(self):
         results = build_app(
             self.root,
@@ -60,7 +81,7 @@ class DistributionTests(unittest.TestCase):
     def test_launcher_contains_qt_and_system_install_switch(self):
         source = launcher_source("qt6")
         compile(source, "__vela_launcher__.py", "exec")
-        self.assertIn("QT_XCB_GL_INTEGRATION", source)
+        self.assertNotIn('os.environ.setdefault("QT_XCB_GL_INTEGRATION", "none")', source)
         self.assertIn("--vela-install", source)
         self.assertIn("VELA_PRODUCTION", source)
         self.assertIn('scope = "system" if "--scope=system" in sys.argv', source)
@@ -71,6 +92,51 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("import webview.platforms.gtk", launcher_source("gtk"))
         self.assertIn("VELA_GUI", source)
         self.assertNotIn("sudo", source)
+
+    def test_linux_launcher_keeps_context_integration_available(self):
+        # Execute the generated environment setup before any Qt import.
+        prefix = launcher_source("qt5").split('    if GUI == "qt6":', 1)[0]
+        for original in ({}, {"QT_XCB_GL_INTEGRATION": "xcb_egl"}):
+            with (
+                patch.dict(os.environ, original, clear=True),
+                patch.object(sys, "platform", "linux"),
+            ):
+                exec(compile(prefix, "launcher-prefix", "exec"), {})
+                self.assertEqual(
+                    os.environ.get("QT_XCB_GL_INTEGRATION"), original.get("QT_XCB_GL_INTEGRATION")
+                )
+                self.assertEqual(os.environ["LIBGL_ALWAYS_SOFTWARE"], "1")
+                self.assertIn("--disable-gpu", os.environ["QTWEBENGINE_CHROMIUM_FLAGS"])
+
+    def test_linux_compatibility_is_opt_in_and_never_enables_remote_debugging(self):
+        for enabled in (False, True):
+            source = launcher_source("qt5", enabled)
+            prefix = source.split('    if GUI == "qt6":', 1)[0]
+            with (
+                patch.dict(os.environ, {"DISPLAY": ":1"}, clear=True),
+                patch.object(sys, "platform", "linux"),
+            ):
+                exec(compile(prefix, "launcher-prefix", "exec"), {})
+                self.assertEqual(
+                    os.environ.get("QTWEBENGINE_DISABLE_SANDBOX"), "1" if enabled else None
+                )
+                self.assertEqual(
+                    os.environ.get("QT_XCB_GL_INTEGRATION"), "xcb_glx" if enabled else None
+                )
+                self.assertNotIn("QTWEBENGINE_REMOTE_DEBUGGING", os.environ)
+        with (
+            patch.dict(os.environ, {"VELA_LINUX_COMPATIBILITY": "0"}, clear=True),
+            patch.object(sys, "platform", "linux"),
+        ):
+            exec(
+                compile(
+                    launcher_source("qt5", True).split('    if GUI == "qt6":', 1)[0],
+                    "launcher-prefix",
+                    "exec",
+                ),
+                {},
+            )
+            self.assertNotIn("QTWEBENGINE_DISABLE_SANDBOX", os.environ)
 
     @unittest.skipIf(os.name == "nt", "GTK build plan é específico de Linux")
     def test_builder_checks_frozen_gui_runtime(self):
