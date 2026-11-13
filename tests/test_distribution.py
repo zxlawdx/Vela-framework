@@ -2,9 +2,9 @@
 """Testes de build, instalacao e diagnostico sem compilar nem usar rede."""
 
 import inspect
-import sys
 import json
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -18,9 +18,9 @@ from vela.cli.build import (
     build_plan,
     gui_venv_messages,
     launcher_source,
-    remove_conflicting_linux_libraries,
     legacy_pkg_resources_collect_args,
     linux_venv_info,
+    remove_conflicting_linux_libraries,
     validate_legacy_pkg_resources,
 )
 from vela.cli.doctor import Check, missing_pip_packages, remedy

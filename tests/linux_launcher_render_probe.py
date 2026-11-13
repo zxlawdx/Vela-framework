@@ -13,9 +13,9 @@ prefix = launcher_source("qt5", os.environ.get("PROBE_COMPATIBILITY") == "1").sp
 )[0]
 exec(compile(prefix, "generated-launcher-prefix", "exec"), {})
 
-from qtpy.QtCore import QTimer, QUrl
-from qtpy.QtWidgets import QApplication
-from qtpy.QtWebEngineWidgets import QWebEngineView
+from qtpy.QtCore import QTimer, QUrl  # noqa: E402
+from qtpy.QtWebEngineWidgets import QWebEngineView  # noqa: E402
+from qtpy.QtWidgets import QApplication  # noqa: E402
 
 output = Path(os.environ.get("GUI_ARTIFACT_DIR", "artifacts"))
 output.mkdir(parents=True, exist_ok=True)
