@@ -338,6 +338,16 @@ def build_plan(root, options):
         "config",
         "--hidden-import",
         "config.wsgi",
+        # Runtime files also ship as data. Explicit roots ensure PyInstaller
+        # analyzes the stdlib SQLite dependency of the resource catalog.
+        "--hidden-import",
+        "vela.resources",
+        "--hidden-import",
+        "vela.resource_access",
+        "--hidden-import",
+        "vela.tabular",
+        "--hidden-import",
+        "sqlite3",
     ]
     # Arquivos do projeto sao copiados PARA A RAIZ do bundle apos PyInstaller.
     # Coloca-los via --add-data moveria arquivos apenas para _internal/ no

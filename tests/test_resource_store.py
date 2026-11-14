@@ -114,3 +114,18 @@ def test_boolean_revision_is_rejected(tmp_path):
     with pytest.raises(ValueError):
         store.publish(b"bad", resource_id=snap.resource_id, expected_revision=True)
     store.close()
+
+
+def test_vela_instances_keep_workspace_storage_separate(tmp_path):
+    from vela.core.app import VelaApp
+
+    first = VelaApp(settings_module="tests.no_settings", resource_directory=tmp_path / "one")
+    second = VelaApp(settings_module="tests.no_settings", resource_directory=tmp_path / "two")
+    snapshot = first.resources.publish(b"one")
+    with pytest.raises(ResourceNotFound):
+        second.resources.current(snapshot.resource_id)
+    first.close()
+    second.close()
+    reopened = VelaApp(settings_module="tests.no_settings", resource_directory=tmp_path / "one")
+    assert reopened.resources.current(snapshot.resource_id) == snapshot
+    reopened.close()

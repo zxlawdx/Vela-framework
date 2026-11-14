@@ -32,6 +32,7 @@ class VelaApp:
         enable_api=True,
         window_backend_class=None,
         http_server_class=None,
+        resource_directory=None,
     ):
         self.logger = VelaLogger("app")
         self._config_loader = ConfigLoader(settings_module)
@@ -45,7 +46,12 @@ class VelaApp:
         self.api_router = api.new_router()
         self.events = EventBus()
         self.resources = ResourceStore(
-            events=self.events, directory=getattr(self._settings, "RESOURCE_DIRECTORY", None)
+            events=self.events,
+            directory=(
+                resource_directory
+                if resource_directory is not None
+                else getattr(self._settings, "RESOURCE_DIRECTORY", None)
+            ),
         )
         self.resource_access = ResourceAccess(self.resources, self.apps)
         self.tabular = TabularResources(self.resources)
