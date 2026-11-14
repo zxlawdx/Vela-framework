@@ -54,7 +54,7 @@ class VelaApp:
                 else getattr(self._settings, "RESOURCE_DIRECTORY", None)
             ),
         )
-        self.resource_access = ResourceAccess(self.resources, self.apps)
+        self.resource_access = ResourceAccess(self.resources, self.apps, events=self.events)
         self.tabular = TabularResources(self.resources)
         self.lifecycle = LifecycleManager()
         self.lifecycle.configured()
@@ -76,6 +76,7 @@ class VelaApp:
         self.lifecycle.on_shutdown(self.hot_reload.stop)
         self.lifecycle.on_shutdown(self.events.clear)
         self.lifecycle.on_shutdown(self.resources.close)
+        self.lifecycle.on_shutdown(self.resource_access.close)
         if self.config.shell_mode == "http":
             self.router.base_url = f"http://{self.config.api.host}:{self.config.api.port}"
 

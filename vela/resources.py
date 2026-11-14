@@ -407,6 +407,28 @@ class ResourceStore:
             self._events.emit("resource:pruned", {"resource_id": resource_id, "revisions": removed})
         return removed
 
+    def delete(self, resource_id):
+        """Remove an unpinned resource, including its current revision."""
+        self._validate_id(resource_id)
+        with self._lock, self._publication():
+            self.current(resource_id)
+            if self._db.execute(
+                "SELECT 1 FROM resource_pins WHERE resource_id=? LIMIT 1", (resource_id,)
+            ).fetchone():
+                raise ValueError("Resource has durable references and cannot be deleted.")
+            revisions = [
+                row[0]
+                for row in self._db.execute(
+                    "SELECT revision FROM snapshots WHERE resource_id=?", (resource_id,)
+                )
+            ]
+            self._db.execute("DELETE FROM snapshots WHERE resource_id=?", (resource_id,))
+        for revision in revisions:
+            self._path(resource_id, revision).unlink(missing_ok=True)
+        if self._events is not None:
+            self._events.emit("resource:deleted", {"resource_id": resource_id})
+        return {"resource_id": resource_id, "revisions": len(revisions)}
+
     def usage(self):
         with self._lock:
             self._check_open()

@@ -275,3 +275,17 @@ def test_session_publication_and_pin_replacement_are_atomic(tmp_path):
     )
     assert store.prune(first.resource_id) == [1]
     store.close()
+
+
+def test_delete_respects_durable_references_and_releases_quota(tmp_path):
+    store = ResourceStore(directory=tmp_path, max_store_bytes=10)
+    snap = store.publish(b"data")
+    store.pin("tabs", snap.resource_id, 1)
+    with pytest.raises(ValueError):
+        store.delete(snap.resource_id)
+    store.unpin("tabs", snap.resource_id, 1)
+    assert store.delete(snap.resource_id)["revisions"] == 1
+    assert store.usage()["bytes"] == 0
+    with pytest.raises(ResourceNotFound):
+        store.current(snap.resource_id)
+    store.close()

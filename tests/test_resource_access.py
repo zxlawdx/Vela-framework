@@ -30,3 +30,26 @@ def test_explicit_revision_scoped_grants_and_revocation():
     with pytest.raises(PermissionError):
         client.metadata(snap.resource_id, 1)
     store.close()
+
+
+def test_pruning_and_deletion_revoke_stale_capabilities():
+    from vela.events import EventBus
+
+    events = EventBus()
+    registry = AppRegistry()
+    registry.register(AppConfig(name="data", module="apps.data"))
+    store = ResourceStore(events=events)
+    access = ResourceAccess(store, registry, events=events)
+    snapshot = store.publish(b"old")
+    access.grant("data", snapshot.resource_id, 1)
+    client = access.client("data")
+    store.publish(b"new", resource_id=snapshot.resource_id, expected_revision=1)
+    store.prune(snapshot.resource_id)
+    with pytest.raises(PermissionError):
+        client.metadata(snapshot.resource_id, 1)
+    access.grant("data", snapshot.resource_id, 2)
+    store.delete(snapshot.resource_id)
+    with pytest.raises(PermissionError):
+        client.metadata(snapshot.resource_id, 2)
+    access.close()
+    store.close()

@@ -2,7 +2,7 @@ name: Vela CI and cross-platform regression smoke
 
 on:
   push:
-    branches: [main, "feature/**", "fix/**", "refactor/**"]
+    branches: [main, "feature/**", "feat/**", "fix/**", "refactor/**"]
   pull_request:
   workflow_dispatch:
 
