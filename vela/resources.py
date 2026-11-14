@@ -106,6 +106,21 @@ class ResourceStore:
         self._db.execute(
             "CREATE TABLE IF NOT EXISTS resource_pins (owner TEXT, resource_id TEXT, revision INTEGER, PRIMARY KEY(owner, resource_id, revision))"
         )
+        self._db.execute(
+            "CREATE INDEX IF NOT EXISTS resource_pins_by_snapshot ON resource_pins(resource_id,revision)"
+        )
+        self._db.execute(
+            "CREATE TABLE IF NOT EXISTS resource_usage (singleton INTEGER PRIMARY KEY CHECK(singleton=1), bytes INTEGER NOT NULL, revisions INTEGER NOT NULL)"
+        )
+        self._db.execute(
+            "INSERT OR IGNORE INTO resource_usage SELECT 1,COALESCE(SUM(size),0),COUNT(*) FROM snapshots"
+        )
+        self._db.execute(
+            "CREATE TRIGGER IF NOT EXISTS snapshot_insert_usage AFTER INSERT ON snapshots BEGIN UPDATE resource_usage SET bytes=bytes+NEW.size,revisions=revisions+1 WHERE singleton=1; END"
+        )
+        self._db.execute(
+            "CREATE TRIGGER IF NOT EXISTS snapshot_delete_usage AFTER DELETE ON snapshots BEGIN UPDATE resource_usage SET bytes=bytes-OLD.size,revisions=revisions-1 WHERE singleton=1; END"
+        )
         self._db.commit()
         self._max_size = max_resource_bytes
         self._chunk_limit = max_chunk_bytes
@@ -183,12 +198,19 @@ class ResourceStore:
         resource_id: str | None = None,
         expected_revision: int | None = None,
         media_type: str = "application/octet-stream",
+        pin_owner: str | None = None,
+        pins=None,
     ) -> ResourceSnapshot:
         """Create a resource or append an immutable revision.
 
         expected_revision must equal the current revision when updating.
         Input streams are consumed from their current offset.
         """
+        if (pin_owner is None) != (pins is None):
+            raise ValueError("pin_owner and pins must be provided together.")
+        if pin_owner is not None:
+            self._validate_id(pin_owner)
+            pins = list(pins)
         if not isinstance(media_type, str) or not media_type or len(media_type) > 255:
             raise ValueError("Invalid media type.")
         if resource_id is None:
@@ -209,7 +231,7 @@ class ResourceStore:
             if expected_revision != (current_revision or None):
                 raise RevisionConflict(f"Expected {expected_revision}, actual {current_revision}")
             committed_bytes = self._db.execute(
-                "SELECT COALESCE(SUM(size),0) FROM snapshots"
+                "SELECT bytes FROM resource_usage WHERE singleton=1"
             ).fetchone()[0]
             next_revision = current_revision + 1
             destination = self._path(resource_id, next_revision)
@@ -248,6 +270,14 @@ class ResourceStore:
                 "INSERT INTO snapshots VALUES (?, ?, ?, ?, ?)",
                 (resource_id, next_revision, size, result.sha256, media_type),
             )
+            if pin_owner is not None:
+                for handle in pins:
+                    self.snapshot(handle["resource_id"], handle["revision"])
+                self._db.execute("DELETE FROM resource_pins WHERE owner=?", (pin_owner,))
+                self._db.executemany(
+                    "INSERT OR IGNORE INTO resource_pins VALUES(?,?,?)",
+                    [(pin_owner, h["resource_id"], h["revision"]) for h in pins],
+                )
         if self._events is not None:
             self._events.emit("resource:published", result.to_dict())
         if self._retention is not None:
@@ -381,7 +411,7 @@ class ResourceStore:
         with self._lock:
             self._check_open()
             count, size = self._db.execute(
-                "SELECT COUNT(*),COALESCE(SUM(size),0) FROM snapshots"
+                "SELECT revisions,bytes FROM resource_usage WHERE singleton=1"
             ).fetchone()
             return {"revisions": count, "bytes": size, "quota_bytes": self._quota}
 

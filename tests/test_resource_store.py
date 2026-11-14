@@ -253,3 +253,25 @@ store.publish(b"renamed-but-not-committed")
     assert store.usage()["revisions"] == 0
     assert not list(tmp_path.rglob("*.blob"))
     store.close()
+
+
+def test_session_publication_and_pin_replacement_are_atomic(tmp_path):
+    store = ResourceStore(directory=tmp_path)
+    first = store.publish(b"v1")
+    handle = {"resource_id": first.resource_id, "revision": 1}
+    session = store.publish(b"session", resource_id="session", pin_owner="tabs", pins=[handle])
+    store.publish(b"v2", resource_id=first.resource_id, expected_revision=1)
+    with pytest.raises(RevisionConflict):
+        store.publish(
+            b"stale", resource_id="session", expected_revision=9, pin_owner="tabs", pins=[]
+        )
+    assert store.prune(first.resource_id) == []
+    store.publish(
+        b"new session",
+        resource_id="session",
+        expected_revision=session.revision,
+        pin_owner="tabs",
+        pins=[],
+    )
+    assert store.prune(first.resource_id) == [1]
+    store.close()

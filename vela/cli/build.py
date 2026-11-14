@@ -265,6 +265,9 @@ def launcher_source(gui, linux_compatibility=False):
         "        from vela.cli.install import install_bundle\n"
         '        scope = "system" if "--scope=system" in sys.argv else "user"\n'
         "        install_bundle(ROOT, scope=scope)\n"
+        '    elif "--vela-project-test" in sys.argv:\n'
+        "        from config.wsgi import self_test\n"
+        "        self_test()\n"
         '    elif "--self-test" in sys.argv:\n'
         "        from config.wsgi import run\n"
         '        assert (ROOT / "apps").is_dir() and (ROOT / "staticfiles").is_dir()\n'
