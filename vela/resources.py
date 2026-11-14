@@ -13,8 +13,8 @@ from threading import RLock
 from typing import BinaryIO
 from uuid import uuid4
 import os
-import shutil
 import tempfile
+import re
 
 from vela.events import EventBus
 
@@ -72,7 +72,7 @@ class ResourceStore:
 
     @staticmethod
     def _validate_id(resource_id: str) -> None:
-        if not isinstance(resource_id, str) or not resource_id or len(resource_id) > 128:
+        if not isinstance(resource_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", resource_id):
             raise ValueError("Invalid resource ID.")
 
     def _path(self, resource_id: str, revision: int) -> Path:
