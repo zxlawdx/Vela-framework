@@ -353,6 +353,15 @@ def build_plan(root, options):
         "--hidden-import",
         "sqlite3",
     ]
+    distributions = getattr(settings, "BUILD_COPY_METADATA", ())
+    if not isinstance(distributions, (list, tuple)):
+        raise ValueError("BUILD_COPY_METADATA must be a list or tuple.")
+    for distribution in distributions:
+        if not isinstance(distribution, str) or not re.fullmatch(
+            r"[A-Za-z0-9][A-Za-z0-9_.-]*", distribution
+        ):
+            raise ValueError("Invalid build metadata distribution.")
+        cmd += ["--copy-metadata", distribution]
     if (root / "shared" / "__init__.py").is_file():
         cmd += ["--collect-submodules", "shared"]
     # Arquivos do projeto sao copiados PARA A RAIZ do bundle apos PyInstaller.

@@ -146,6 +146,13 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("gi", gtk["command"])
         self.assertIn("webview.platforms.gtk", gtk["command"])
 
+    def test_project_can_preserve_distribution_entry_points_in_frozen_build(self):
+        settings = self.root / "config/settings.py"
+        settings.write_text(settings.read_text() + "\nBUILD_COPY_METADATA = ('jupyter_client',)\n")
+        plan = build_plan(self.root, BuildOptions(gui="qt6"))
+        index = plan["command"].index("--copy-metadata")
+        self.assertEqual(plan["command"][index + 1], "jupyter_client")
+
     def test_shared_project_package_survives_frozen_build_plan(self):
         shared = self.root / "shared"
         shared.mkdir()
