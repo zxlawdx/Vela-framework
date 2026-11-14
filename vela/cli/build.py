@@ -312,8 +312,9 @@ def build_plan(root, options):
     output = output.resolve()
     entry = root / ".vela-build" / "__vela_launcher__.py"
     folders = ["apps", "config", "staticfiles"]
-    if (root / "assets").is_dir():
-        folders.append("assets")
+    for optional_folder in ("assets", "shared"):
+        if (root / optional_folder).is_dir():
+            folders.append(optional_folder)
     cmd = [
         sys.executable,
         "-m",
@@ -338,7 +339,19 @@ def build_plan(root, options):
         "config",
         "--hidden-import",
         "config.wsgi",
+        # Runtime files also ship as data. Explicit roots ensure PyInstaller
+        # analyzes the stdlib SQLite dependency of the resource catalog.
+        "--hidden-import",
+        "vela.resources",
+        "--hidden-import",
+        "vela.resource_access",
+        "--hidden-import",
+        "vela.tabular",
+        "--hidden-import",
+        "sqlite3",
     ]
+    if (root / "shared" / "__init__.py").is_file():
+        cmd += ["--collect-submodules", "shared"]
     # Arquivos do projeto sao copiados PARA A RAIZ do bundle apos PyInstaller.
     # Coloca-los via --add-data moveria arquivos apenas para _internal/ no
     # PyInstaller 6, quebrando import dinamico de templates no Vela.

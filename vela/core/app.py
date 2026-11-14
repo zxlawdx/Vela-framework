@@ -15,8 +15,11 @@ from vela.core.router import Router
 from vela.core.window import DesktopWindow
 from vela.events import EventBus
 from vela.log.logger import VelaLogger
+from vela.resource_access import ResourceAccess
+from vela.resources import ResourceStore
 from vela.runtime.hotreload import HotReloadManager
 from vela.runtime.lifecycle import LifecycleManager
+from vela.tabular import TabularResources
 
 
 class VelaApp:
@@ -29,6 +32,7 @@ class VelaApp:
         enable_api=True,
         window_backend_class=None,
         http_server_class=None,
+        resource_directory=None,
     ):
         self.logger = VelaLogger("app")
         self._config_loader = ConfigLoader(settings_module)
@@ -41,6 +45,16 @@ class VelaApp:
         self.router.debug = self.config.debug
         self.api_router = api.new_router()
         self.events = EventBus()
+        self.resources = ResourceStore(
+            events=self.events,
+            directory=(
+                resource_directory
+                if resource_directory is not None
+                else getattr(self._settings, "RESOURCE_DIRECTORY", None)
+            ),
+        )
+        self.resource_access = ResourceAccess(self.resources, self.apps)
+        self.tabular = TabularResources(self.resources)
         self.lifecycle = LifecycleManager()
         self.lifecycle.configured()
         self.hot_reload = HotReloadManager(enabled=self.config.debug)
@@ -60,6 +74,7 @@ class VelaApp:
         self._closed = False
         self.lifecycle.on_shutdown(self.hot_reload.stop)
         self.lifecycle.on_shutdown(self.events.clear)
+        self.lifecycle.on_shutdown(self.resources.close)
         if self.config.shell_mode == "http":
             self.router.base_url = f"http://{self.config.api.host}:{self.config.api.port}"
 
