@@ -86,3 +86,41 @@ Tests cover reopening, concurrent writers, conflicts, isolated drafts, failed
 streams, revision grants, revocation and optional tabular roundtrips. CI runs the
 suite on Linux and Windows; a locally passing Linux run is not evidence that the
 Windows CI or packaged GUI builds have passed.
+
+
+## Retention, quotas and interrupted publication
+
+`ResourceStore(max_store_bytes=..., retention_versions=...)` configures a hard
+quota on catalogued blob bytes and optional post-publication retention per
+resource. Vela settings may supply these through `RESOURCE_LIMITS`. Publication
+that exceeds quota is rolled back; it never evicts a current or pinned revision
+implicitly. Use `usage()` to inspect usage and `prune(id, keep_last=N)` to reclaim
+older unpinned revisions before retrying. Catalog/WAL and transient editor files
+are not included in the blob quota; provision filesystem headroom separately.
+
+`pin(owner, id, revision)`, `unpin(...)` and `replace_pins(owner, handles)` protect
+durable consumer references. Owners reconcile their pins when history/tabs are
+removed. Pruning never renumbers retained versions and always keeps the current
+revision. It commits metadata deletion before unlinking files. Interrupted
+cleanup therefore leaves collectible orphan files, never visible missing blobs.
+
+Startup `recover()` serializes against publishers, runs SQLite quick_check,
+verifies committed lengths and hashes (streaming in 1 MiB blocks), and removes
+uncommitted `.writing-*` and orphan `.blob` files. Corrupt/missing committed data
+fails closed without deleting the evidence or catalog. `verify(id, revision)`
+can be called explicitly; grants verify a snapshot before sharing it. Trusted
+backend `open_path()` checks file size/type and rejects symlinks. On POSIX, storage
+is restricted to its owner with directory mode 0700. Windows inherits the user's
+profile ACL; it is not a sandbox against other programs running as that user.
+
+On POSIX, blob rename is followed by directory fsync before catalog commit.
+Windows flushes blob data and uses SQLite's durable commit; a power-loss test
+cannot be simulated by normal process termination. Startup integrity checking is
+O(total retained bytes) time and O(1 MiB) Python buffer; callers may disable full
+startup hashing with `verify_on_startup=False`, retaining size/existence checks,
+and schedule explicit verification through the existing JobManager.
+
+Regression tests terminate real writer processes both during streaming and after
+blob rename/before catalog commit. Other tests cover quota rollback, pin-aware
+retention, corruption, EventBus post-commit metadata, JobManager publication and
+Vela lifecycle shutdown. These use existing mechanisms without new executors.

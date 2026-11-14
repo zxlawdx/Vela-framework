@@ -129,3 +129,127 @@ def test_vela_instances_keep_workspace_storage_separate(tmp_path):
     reopened = VelaApp(settings_module="tests.no_settings", resource_directory=tmp_path / "one")
     assert reopened.resources.current(snapshot.resource_id) == snapshot
     reopened.close()
+
+
+def test_retention_preserves_pins_and_never_reuses_revisions(tmp_path):
+    store = ResourceStore(directory=tmp_path, retention_versions=2)
+    first = store.publish(b"1")
+    store.pin("workspace", first.resource_id, 1)
+    for revision in range(1, 5):
+        store.publish(
+            str(revision + 1).encode(), resource_id=first.resource_id, expected_revision=revision
+        )
+    assert store.snapshot(first.resource_id, 1) == first
+    with pytest.raises(ResourceNotFound):
+        store.snapshot(first.resource_id, 2)
+    store.unpin("workspace", first.resource_id, 1)
+    assert store.prune(first.resource_id, keep_last=2) == [1]
+    assert store.publish(b"6", resource_id=first.resource_id, expected_revision=5).revision == 6
+    store.close()
+
+
+def test_quota_failure_is_atomic_and_pruning_releases_capacity(tmp_path):
+    from vela.resources import ResourceQuotaExceeded
+
+    store = ResourceStore(directory=tmp_path, max_store_bytes=6)
+    first = store.publish(b"123")
+    with pytest.raises(ResourceQuotaExceeded):
+        store.publish(b"1234", resource_id=first.resource_id, expected_revision=1)
+    assert store.current(first.resource_id) == first
+    assert store.usage()["bytes"] == 3
+    store.publish(b"456", resource_id=first.resource_id, expected_revision=1)
+    store.prune(first.resource_id)
+    assert store.usage()["bytes"] == 3
+    store.publish(b"789", resource_id=first.resource_id, expected_revision=2)
+    store.close()
+
+
+def test_integrity_fails_closed_without_removing_committed_data(tmp_path):
+    from vela.resources import ResourceCorrupted
+
+    store = ResourceStore(directory=tmp_path)
+    snap = store.publish(b"valid")
+    path = store.open_path(snap.resource_id, 1)
+    path.write_bytes(b"wrong")
+    with pytest.raises(ResourceCorrupted):
+        store.verify(snap.resource_id, 1)
+    store.close()
+    with pytest.raises(ResourceCorrupted):
+        ResourceStore(directory=tmp_path)
+    assert path.read_bytes() == b"wrong"
+
+
+def test_interrupted_writer_is_recovered_after_process_exit(tmp_path):
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    code = """
+import os,sys
+from vela.resources import ResourceStore
+class Interrupted:
+    count = 0
+    def read(self, size):
+        self.count += 1
+        if self.count > 1: os._exit(17)
+        return b'x' * size
+store = ResourceStore(directory=sys.argv[1])
+store.publish(Interrupted())
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", code, str(tmp_path)],
+        env={**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1])},
+    )
+    assert result.returncode == 17
+    assert list(tmp_path.rglob("*.writing-*"))
+    store = ResourceStore(directory=tmp_path)
+    assert store.usage()["revisions"] == 0
+    assert not list(tmp_path.rglob("*.writing-*"))
+    store.close()
+
+
+def test_job_manager_publication_event_and_lifecycle_shutdown(tmp_path):
+    from vela.core.app import VelaApp
+    from vela.jobs import JobManager
+
+    app = VelaApp(settings_module="tests.no_settings", resource_directory=tmp_path)
+    seen = []
+    app.events.on("resource:published", seen.append)
+    with JobManager(io_workers=1) as jobs:
+        snap = jobs.submit(app.resources.publish, b"async").result(timeout=5)
+    assert seen == [snap.to_dict()]
+    app.close()
+    with pytest.raises(RuntimeError):
+        app.resources.current(snap.resource_id)
+
+
+def test_crash_between_blob_rename_and_catalog_commit_collects_orphan(tmp_path):
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    script = """
+import os,sys
+from vela.resources import ResourceStore
+store = ResourceStore(directory=sys.argv[1])
+class InterruptedCatalog:
+    def __getattr__(self,name): return getattr(original,name)
+    def execute(self,query,*args):
+        if query.startswith("INSERT INTO snapshots"): os._exit(18)
+        return original.execute(query,*args)
+original = store._db
+store._db = InterruptedCatalog()
+store.publish(b"renamed-but-not-committed")
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(tmp_path)],
+        env={**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1])},
+    )
+    assert result.returncode == 18
+    assert list(tmp_path.rglob("*.blob"))
+    store = ResourceStore(directory=tmp_path)
+    assert store.usage()["revisions"] == 0
+    assert not list(tmp_path.rglob("*.blob"))
+    store.close()

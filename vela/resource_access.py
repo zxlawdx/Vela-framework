@@ -25,7 +25,7 @@ class ResourceAccess:
 
     def grant(self, app_name, resource_id, revision):
         self.client(app_name)
-        self.store.snapshot(resource_id, revision)
+        self.store.verify(resource_id, revision)
         with self._lock:
             self._grants.setdefault(app_name, set()).add((resource_id, revision))
 

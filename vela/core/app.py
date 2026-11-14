@@ -46,6 +46,7 @@ class VelaApp:
         self.api_router = api.new_router()
         self.events = EventBus()
         self.resources = ResourceStore(
+            **getattr(self._settings, "RESOURCE_LIMITS", {}),
             events=self.events,
             directory=(
                 resource_directory
