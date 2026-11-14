@@ -32,3 +32,16 @@ def test_arrow_roundtrip():
     batches = list(tables.batches(snap.resource_id, 1, columns=["y"]))
     assert batches[0].to_pydict() == {"y": [3, 4]}
     store.close()
+
+
+def test_parquet_page_bounds_projection_and_end():
+    pa = pytest.importorskip("pyarrow")
+    store = ResourceStore()
+    tables = TabularResources(store)
+    snap = tables.publish_arrow(pa.table({"x": range(3000), "y": range(3000)}))
+    page = tables.page(snap.resource_id, 1, offset=999, limit=3, columns=["y"])
+    assert page.to_pydict() == {"y": [999, 1000, 1001]}
+    assert tables.page(snap.resource_id, 1, offset=3000).num_rows == 0
+    with pytest.raises(ValueError):
+        tables.page(snap.resource_id, 1, limit=1001)
+    store.close()

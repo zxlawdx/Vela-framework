@@ -2,7 +2,8 @@
 
 `VelaApp.resources` owns disk-backed immutable snapshots. Set
 `RESOURCE_DIRECTORY` in settings to retain snapshots across launches; otherwise
-shutdown deletes the temporary store. SQLite indexes metadata and serializes
+shutdown deletes the temporary store. A host embedding several workspaces can pass
+`VelaApp(resource_directory=path)` without modifying process-global settings. SQLite indexes metadata and serializes
 writers (including other processes using the same directory). Publication streams
 in 1 MiB blocks, fsyncs the blob, renames it, then commits its metadata. A crash
 before metadata commit can leave an unreferenced blob; it is never exposed by the
@@ -54,7 +55,10 @@ metadata, after commit. VelaApp closes the store through its existing lifecycle.
 Install `vela-framework[tabular]` to use `app.tabular.publish_pandas(frame)`,
 `to_pandas(id, revision, columns=...)`, `publish_arrow(table)` and lazy
 `batches(id, revision, batch_size=65536, columns=...)`. Imports are deferred;
-base Vela does not require pandas or Arrow. Exchange handles between apps.
+base Vela does not require pandas or Arrow. `page(id, revision, offset=0, limit=100,
+columns=...)` returns a bounded Arrow table (limit <= 1000), skipping complete
+Parquet row groups through metadata. Reading an offset within a row group still
+decodes preceding batches; this is not a constant-time arbitrary-row index. Exchange handles between apps.
 Parquet batches permit bounded processing and column projection. `to_pandas`
 materializes the selected frame and allocates memory proportional to its decoded
 size; it is not a zero-copy promise. Publishing a modified frame requires an
