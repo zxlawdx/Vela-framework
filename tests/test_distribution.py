@@ -146,6 +146,17 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("gi", gtk["command"])
         self.assertIn("webview.platforms.gtk", gtk["command"])
 
+    def test_shared_project_package_survives_frozen_build_plan(self):
+        shared = self.root / "shared"
+        shared.mkdir()
+        (shared / "__init__.py").write_text("")
+        (shared / "contracts.py").write_text("VALUE = 42\n")
+        plan = build_plan(self.root, BuildOptions(gui="qt6"))
+        self.assertIn("shared", plan["folders"])
+        command = plan["command"]
+        index = command.index("shared")
+        self.assertEqual(command[index - 1], "--collect-submodules")
+
     def test_pkg_resources_collects_jaraco_only_when_needed(self):
         with patch(
             "vela.cli.build._module_exists",
