@@ -14,6 +14,7 @@ from vela.core.bridge import BaseBridge
 from vela.core.router import Router
 from vela.core.window import DesktopWindow
 from vela.events import EventBus
+from vela.resources import ResourceStore
 from vela.log.logger import VelaLogger
 from vela.runtime.hotreload import HotReloadManager
 from vela.runtime.lifecycle import LifecycleManager
@@ -41,6 +42,7 @@ class VelaApp:
         self.router.debug = self.config.debug
         self.api_router = api.new_router()
         self.events = EventBus()
+        self.resources = ResourceStore(events=self.events)
         self.lifecycle = LifecycleManager()
         self.lifecycle.configured()
         self.hot_reload = HotReloadManager(enabled=self.config.debug)
@@ -60,6 +62,7 @@ class VelaApp:
         self._closed = False
         self.lifecycle.on_shutdown(self.hot_reload.stop)
         self.lifecycle.on_shutdown(self.events.clear)
+        self.lifecycle.on_shutdown(self.resources.close)
         if self.config.shell_mode == "http":
             self.router.base_url = f"http://{self.config.api.host}:{self.config.api.port}"
 
