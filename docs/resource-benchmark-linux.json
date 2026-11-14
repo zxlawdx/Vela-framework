@@ -1,0 +1,34 @@
+{
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "python": "3.12.14",
+  "results": [
+    {
+      "rows": 1000,
+      "bytes": 13780,
+      "publish_ms": 0.6845710004199645,
+      "stream_ms": 0.13339900033315644,
+      "python_peak_bytes": 1069670
+    },
+    {
+      "rows": 10000,
+      "bytes": 157780,
+      "publish_ms": 1.0994199997185206,
+      "stream_ms": 0.08666000030643772,
+      "python_peak_bytes": 1213334
+    },
+    {
+      "rows": 100000,
+      "bytes": 1777780,
+      "publish_ms": 7.030038999801036,
+      "stream_ms": 0.4581040002449299,
+      "python_peak_bytes": 2104150
+    },
+    {
+      "rows": 1000000,
+      "bytes": 19777780,
+      "publish_ms": 60.7951089996277,
+      "stream_ms": 4.239846000018588,
+      "python_peak_bytes": 2104142
+    }
+  ]
+}
